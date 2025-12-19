@@ -2,7 +2,7 @@ name: Build PhantomJS Wheels
 
 on:
   push:
-    branches: [main]
+    branches: [master]
   pull_request:
 
 jobs:
@@ -11,11 +11,11 @@ jobs:
 
     strategy:
       matrix:
-        os-arch: 
-          - "linux 64bit"
-          - "linux 32bit"
-          - "windows 64bit"
-          - "darwin 64bit"
+        os_arch: 
+          - "linux_64bit"
+          - "linux_32bit"
+          - "windows_64bit"
+          - "darwin_64bit"
 
     steps:
       - name: Checkout repository
@@ -32,7 +32,8 @@ jobs:
 
       - name: Set TARGET_OS and TARGET_ARCH
         run: |
-          IFS=' ' read -r OS ARCH <<< "${{ matrix.os-arch }}"
+          OS="${${{ matrix.os_arch}}%%_*}"
+          ARCH="${${{ matrix.os_arch_}}##*}"
           echo "TARGET_OS=$OS" >> $GITHUB_ENV
           echo "TARGET_ARCH=$ARCH" >> $GITHUB_ENV
           echo "Detected TARGET_OS=$OS, TARGET_ARCH=$ARCH"
