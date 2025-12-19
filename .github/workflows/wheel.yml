@@ -32,24 +32,10 @@ jobs:
 
       - name: Set TARGET_OS and TARGET_ARCH
         run: |
-          case "${{ matrix.os-arch }}" in
-            linux_64bit)
-              echo "TARGET_OS=linux" >> $GITHUB_ENV
-              echo "TARGET_ARCH=64bit" >> $GITHUB_ENV
-              ;;
-            linux_32bit)
-              echo "TARGET_OS=linux" >> $GITHUB_ENV
-              echo "TARGET_ARCH=32bit" >> $GITHUB_ENV
-              ;;
-            windows_64bit)
-              echo "TARGET_OS=windows" >> $GITHUB_ENV
-              echo "TARGET_ARCH=64bit" >> $GITHUB_ENV
-              ;;
-            darwin_64bit)
-              echo "TARGET_OS=darwin" >> $GITHUB_ENV
-              echo "TARGET_ARCH=64bit" >> $GITHUB_ENV
-              ;;
-          esac
+          IFS=' ' read -r OS ARCH <<< "${{ matrix.os-arch }}"
+          echo "TARGET_OS=$OS" >> $GITHUB_ENV
+          echo "TARGET_ARCH=$ARCH" >> $GITHUB_ENV
+          echo "Detected TARGET_OS=$OS, TARGET_ARCH=$ARCH"
 
       - name: Build wheel (download driver)
         run: python setup.py bdist_wheel
