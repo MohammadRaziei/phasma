@@ -16,6 +16,8 @@ DRIVER_PATH = Path(__file__).parent
 
 BASE_URL = "https://github.com/MohammadRaziei/phantomjs-driver/releases/download/drivers"
 
+DRIVER_VERSION = "2.1.1"
+
 FILES = {
     ("Windows", "64bit", "2.1.1"): (
         "phantomjs-2.1.1-windows.zip",
@@ -162,7 +164,7 @@ def setup_logging(quiet: bool = False):
 def main():
     parser = argparse.ArgumentParser(description="Download PhantomJS driver")
     parser.add_argument("--dest", default=DRIVER_PATH.as_posix())
-    parser.add_argument("--version", default="2.1.1")
+    parser.add_argument("--version", default=DRIVER_VERSION)
     parser.add_argument("--os", default=None, help="Operating system (e.g., Linux, Windows, Darwin)")
     parser.add_argument("--arch", default=None, help="Architecture (e.g., 32bit, 64bit)")
     parser.add_argument("--force", action="store_true")
