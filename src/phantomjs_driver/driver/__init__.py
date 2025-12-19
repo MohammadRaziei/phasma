@@ -2,8 +2,9 @@ import os
 import platform
 from pathlib import Path
 import stat
+from typing import List
 
-from .download import download_driver, DRIVER_PATH
+from .download import download_driver, DRIVER_PATH, DRIVER_VERSION
 
 PHANTOMJS_DRIVER_PATH = DRIVER_PATH / "phantomjs"
 
@@ -47,5 +48,15 @@ class Driver:
         return self._bin_path
     
     @property
-    def example_path(self):
+    def examples_path(self) -> Path:
         return PHANTOMJS_DRIVER_PATH / "examples"
+    
+
+    @property
+    def examples_list(self) -> List:
+        return list(self.examples_path.iterdir())
+
+    
+    @property
+    def version(self) -> str:
+        return DRIVER_VERSION
