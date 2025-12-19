@@ -3,7 +3,7 @@ import platform
 from pathlib import Path
 import stat
 
-from download import download_driver, DRIVER_PATH
+from .download import download_driver, DRIVER_PATH
 
 PHANTOMJS_DRIVER_PATH = DRIVER_PATH / "phantomjs"
 

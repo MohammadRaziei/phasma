@@ -7,7 +7,7 @@ from phantomjs_driver.driver.download import download_driver, setup_logging
 
 logger = logging.getLogger("setup")
 
-setup_logging()
+setup_logging(logger)
 
 class bdist_wheel(_bdist_wheel):
     def detect_platform(self):
@@ -52,7 +52,7 @@ if __name__ == "__main__":
         package_dir={"": "src"},
         include_package_data=True,
         package_data={
-            "phantomjs_driver.driver": ["*", "**/*"],
+            "phantomjs_driver.driver.phantomjs": ["*", "**/*"],
         },
         options={
             "egg_info": {"egg_base": "."},

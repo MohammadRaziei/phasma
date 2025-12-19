@@ -19,19 +19,19 @@ BASE_URL = "https://github.com/MohammadRaziei/phantomjs-driver/releases/download
 DRIVER_VERSION = "2.1.1"
 
 FILES = {
-    ("Windows", "64bit", "2.1.1"): (
+    ("windows", "64bit", "2.1.1"): (
         "phantomjs-2.1.1-windows.zip",
         "d9fb05623d6b26d3654d008eab3adafd1f6350433dfd16138c46161f42c7dcc8",
     ),
-    ("Darwin", "64bit", "2.1.1"): (
+    ("darwin", "64bit", "2.1.1"): (
         "phantomjs-2.1.1-macosx.zip",
         "538cf488219ab27e309eafc629e2bcee9976990fe90b1ec334f541779150f8c1",
     ),
-    ("Linux", "64bit", "2.1.1"): (
+    ("linux", "64bit", "2.1.1"): (
         "phantomjs-2.1.1-linux-x86_64.tar.bz2",
         "86dd9a4bf4aee45f1a84c9f61cf1947c1d6dce9b9e8d2a907105da7852460d2f",
     ),
-    ("Linux", "32bit", "2.1.1"): (
+    ("linux", "32bit", "2.1.1"): (
         "phantomjs-2.1.1-linux-i686.tar.bz2",
         "80e03cfeb22cc4dfe4e73b68ab81c9fdd7c78968cfd5358e6af33960464f15e3",
     ),
@@ -117,7 +117,7 @@ def download_driver(
     if dest is None:
         dest = DRIVER_PATH
     if os_name is None:
-        os_name = platform.system()
+        os_name = platform.system().lower()
     if arch is None:
         arch = platform.architecture()[0]
         if arch not in ("32bit", "64bit"):
@@ -141,7 +141,7 @@ def download_driver(
     return binary
 
 
-def setup_logging(quiet: bool = False):
+def setup_logging(logger, quiet: bool = False):
     """Configure logging with a clean, professional format."""
     # Avoid adding multiple handlers if called repeatedly
     if logger.hasHandlers():
@@ -172,7 +172,7 @@ def main():
 
     args = parser.parse_args()
 
-    setup_logging(quiet=args.quiet)
+    setup_logging(logger, quiet=args.quiet)
 
 
     # Detect OS and arch if not provided
