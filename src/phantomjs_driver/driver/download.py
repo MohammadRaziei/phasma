@@ -88,7 +88,7 @@ def download_and_extract(
         archive.unlink()
 
     if not archive.exists():
-        logger.info("Downloading %s", url)
+        logger.info("Downloading %s to %s", url, archive)
         download(url, archive)
 
     logger.info("Verifying checksum")
@@ -105,6 +105,8 @@ def download_and_extract(
     extract_path = extract_dir / Path(Path(archive).stem).stem
     os.rename(extract_path, extract_dir / "phantomjs")
     os.remove(archive)
+
+    return (extract_dir / "phantomjs" / "bin").exists()
 
 
 def download_driver(

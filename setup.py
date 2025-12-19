@@ -1,7 +1,12 @@
 import platform, os
+from pathlib import Path
 from setuptools import setup, find_namespace_packages
 from wheel.bdist_wheel import bdist_wheel as _bdist_wheel
 import logging
+import sys
+
+SRC_PATH = Path(__file__).parent / "src"
+sys.path.append(SRC_PATH.as_posix())
 
 from phantomjs_driver.driver.download import download_driver, setup_logging
 
@@ -29,7 +34,11 @@ class bdist_wheel(_bdist_wheel):
     def run(self):
         os_name, arch = self.detect_platform()
         logger.info(f"Downloading PhantomJS for {os_name} {arch}")
-        download_driver(os_name=os_name, arch=arch)
+        dest = SRC_PATH / "phantomjs_driver" / "driver"
+        success = download_driver(dest=dest, os_name=os_name, arch=arch)
+        if not success:
+            logger.error("Download Failed")
+            raise RuntimeError("Download Failed")
 
         super().run()
 
