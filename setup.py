@@ -2,17 +2,19 @@ import platform, os
 from pathlib import Path
 from setuptools import setup, find_namespace_packages
 from wheel.bdist_wheel import bdist_wheel as _bdist_wheel
-import logging
 import sys
+import logging
 
 SRC_PATH = Path(__file__).parent / "src"
 sys.path.append(SRC_PATH.as_posix())
 
 from phasma.driver.download import download_driver, setup_logging
 
+
+setup_logging()
+
 logger = logging.getLogger("setup")
 
-setup_logging(logger)
 
 class bdist_wheel(_bdist_wheel):
     def detect_platform(self):

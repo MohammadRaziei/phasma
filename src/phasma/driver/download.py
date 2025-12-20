@@ -4,7 +4,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import logging
-import os, platform
+import os, platform, sys
 import shutil
 import tarfile, zipfile
 from pathlib import Path
@@ -162,25 +162,23 @@ def download_driver(
     return binary
 
 
-def setup_logging(logger, quiet: bool = False):
-    """Configure logging with a clean, professional format."""
-    # Avoid adding multiple handlers if called repeatedly
-    if logger.hasHandlers():
-        logger.handlers.clear()
+def setup_logging(quiet: bool = False):
+    """
+    Configure global logging settings.
 
-    handler = logging.StreamHandler()
-    if quiet:
-        logger.setLevel(logging.ERROR)
-        handler.setFormatter(logging.Formatter("%(levelname)s: %(message)s"))
-    else:
-        logger.setLevel(logging.INFO)
-        # Richer format for development/debugging
-        handler.setFormatter(logging.Formatter(
-            "[%(asctime)s] %(levelname)-8s %(name)s: %(message)s",
-            datefmt="%Y-%m-%d %H:%M:%S"
-        ))
-    logger.addHandler(handler)
-    logger.propagate = False  # Prevent double logs if root logger is also configured
+    :param quiet: If True, only warnings and errors are shown.
+    """
+    level = logging.WARNING if quiet else logging.INFO
+
+    logging.basicConfig(
+        level=level,
+        format="%(asctime)s | %(levelname)-8s | %(name)s | %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+        handlers=[
+            logging.StreamHandler(sys.stdout)
+        ],
+        force=True  # overwrite any existing logging config
+    )
 
 def main():
     parser = argparse.ArgumentParser(description="Download PhantomJS driver")
@@ -193,7 +191,7 @@ def main():
 
     args = parser.parse_args()
 
-    setup_logging(logger, quiet=args.quiet)
+    setup_logging(quiet=args.quiet)
 
 
     # Detect OS and arch if not provided
