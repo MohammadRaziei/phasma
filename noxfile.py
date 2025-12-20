@@ -145,50 +145,43 @@ def clean(session: nox.Session) -> None:
     """Clean up build artifacts and downloaded drivers."""
     import shutil
     
+    def remove_path(path: Path) -> None:
+        """Remove a file or directory if it exists."""
+        if not path.exists():
+            return
+        print(f"Removing {path}")
+        if path.is_dir():
+            shutil.rmtree(path, ignore_errors=True)
+        else:
+            path.unlink(missing_ok=True)
+    
+    def remove_glob(pattern: str) -> None:
+        """Remove all files/directories matching a glob pattern."""
+        for path in Path(".").glob(pattern):
+            remove_path(path)
+    
+    def remove_rglob(pattern: str) -> None:
+        """Remove all files/directories matching a recursive glob pattern."""
+        for path in Path(".").rglob(pattern):
+            remove_path(path)
+    
     # Remove build directories
     for dir_name in ["build", "dist", "coverage_html_report"]:
-        dir_path = Path(dir_name)
-        if dir_path.exists():
-            print(f"Removing {dir_path}")
-            shutil.rmtree(dir_path, ignore_errors=True)
+        remove_path(Path(dir_name))
     
-    # Remove *.egg-info directories using glob
-    for egg_info in Path(".").glob("*.egg-info"):
-        if egg_info.exists():
-            print(f"Removing {egg_info}")
-            shutil.rmtree(egg_info, ignore_errors=True)
+    # Remove *.egg-info directories
+    remove_glob("*.egg-info")
     
     # Remove downloaded driver files
-    driver_dir = PACKAGE_DIR / "driver" / "phantomjs"
-    if driver_dir.exists():
-        print(f"Removing {driver_dir}")
-        shutil.rmtree(driver_dir, ignore_errors=True)
+    # driver_dir = PACKAGE_DIR / "driver" / "phantomjs"
+    # remove_path(driver_dir)
     
-    # Remove __pycache__ directories and .pyc files
-    for pycache in Path(".").rglob("__pycache__"):
-        if pycache.exists():
-            print(f"Removing {pycache}")
-            shutil.rmtree(pycache, ignore_errors=True)
+    # Remove __pycache__ directories
+    remove_rglob("__pycache__")
     
-    for pyc in Path(".").rglob("*.pyc"):
-        if pyc.exists():
-            print(f"Removing {pyc}")
-            pyc.unlink(missing_ok=True)
-    
-    for pyo in Path(".").rglob("*.pyo"):
-        if pyo.exists():
-            print(f"Removing {pyo}")
-            pyo.unlink(missing_ok=True)
-    
-    for pyd in Path(".").rglob("*.pyd"):
-        if pyd.exists():
-            print(f"Removing {pyd}")
-            pyd.unlink(missing_ok=True)
-    
-    for coverage_file in Path(".").rglob(".coverage"):
-        if coverage_file.exists():
-            print(f"Removing {coverage_file}")
-            coverage_file.unlink(missing_ok=True)
+    # Remove compiled Python files
+    for pattern in ["*.pyc", "*.pyo", "*.pyd", ".coverage"]:
+        remove_rglob(pattern)
 
 
 @nox.session(python=False)
@@ -196,12 +189,8 @@ def dev(session: nox.Session) -> None:
     """Set up development environment."""
     # Install development dependencies
     run_command([
-        sys.executable,
-        "-m",
-        "pip",
-        "install",
-        "-e",
-        ".[test]",
+        sys.executable, "-m","pip","install",
+        "-e", ".[test]",
         "black",
         "ruff",
         "coverage",
