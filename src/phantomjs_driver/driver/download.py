@@ -102,7 +102,18 @@ def download_and_extract(
 
     logger.info("Extracting")
     extract(archive, extract_dir)
-    extract_path = extract_dir / Path(Path(archive).stem).stem
+
+
+    ARCHIVE_SUFFIXES = (
+        ".tar.bz2",
+        ".zip",
+    )
+    name = os.path.basename(archive)
+    for suf in ARCHIVE_SUFFIXES:
+        if name.endswith(suf):
+            name = name[:-len(suf)]
+    extract_path = extract_dir / name 
+
     os.rename(extract_path, extract_dir / "phantomjs")
     os.remove(archive)
 
