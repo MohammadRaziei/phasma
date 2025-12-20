@@ -93,13 +93,14 @@ def download_and_extract(
 
     dest = extract_dir / "phantomjs"
 
+    is_ok = (dest / "bin").exists()
 
-    if (dest / "bin").exists():
+    if is_ok:
         logger.info("Path exists: %s", dest)
         if force:
             os.remove(dest)
         else:
-            return
+            return is_ok
 
     logger.info("Downloading %s to %s", url, archive)
     download(url, archive)
