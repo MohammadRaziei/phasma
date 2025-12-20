@@ -37,6 +37,10 @@ FILES = {
     ),
 }
 
+ARCHIVE_SUFFIXES = (
+    ".tar.bz2",
+    ".zip",
+)
 
 def sha256(path: Path) -> str:
     h = hashlib.sha256()
@@ -87,9 +91,21 @@ def download_and_extract(
     if force and archive.exists():
         archive.unlink()
 
-    if not archive.exists():
-        logger.info("Downloading %s to %s", url, archive)
-        download(url, archive)
+    name = os.path.basename(archive)
+    for suf in ARCHIVE_SUFFIXES:
+        if name.endswith(suf):
+            name = name[:-len(suf)]
+    extract_path = extract_dir / name 
+
+    if extract_path.exists():
+        logger.info("Path exists: %s", extract_path)
+        if force:
+            os.remove(extract_path)
+        else:
+            return
+
+    logger.info("Downloading %s to %s", url, archive)
+    download(url, archive)
 
     logger.info("Verifying checksum")
     if sha256(archive) != checksum:
@@ -102,17 +118,6 @@ def download_and_extract(
 
     logger.info("Extracting")
     extract(archive, extract_dir)
-
-
-    ARCHIVE_SUFFIXES = (
-        ".tar.bz2",
-        ".zip",
-    )
-    name = os.path.basename(archive)
-    for suf in ARCHIVE_SUFFIXES:
-        if name.endswith(suf):
-            name = name[:-len(suf)]
-    extract_path = extract_dir / name 
 
     os.rename(extract_path, extract_dir / "phantomjs")
     os.remove(archive)
