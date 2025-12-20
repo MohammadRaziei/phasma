@@ -6,7 +6,7 @@ from typing import List
 
 from .download import download_driver, DRIVER_PATH, DRIVER_VERSION
 
-PHANTOMJS_DRIVER_PATH = DRIVER_PATH / "phantomjs"
+phasma_PATH = DRIVER_PATH / "phantomjs"
 
 
 class Driver:
@@ -24,7 +24,7 @@ class Driver:
         exe_name = "phantomjs.exe" if system == "Windows" else "phantomjs"
 
         # Final expected path: <DRIVER_PATH>/bin/<phantomjs or phantomjs.exe>
-        self._bin_path = PHANTOMJS_DRIVER_PATH / "bin" / exe_name
+        self._bin_path = phasma_PATH / "bin" / exe_name
 
         # If the binary doesn't exist, download and set it up
         if not self._bin_path.is_file():
@@ -49,7 +49,7 @@ class Driver:
     
     @property
     def examples_path(self) -> Path:
-        return PHANTOMJS_DRIVER_PATH / "examples"
+        return phasma_PATH / "examples"
     
 
     @property

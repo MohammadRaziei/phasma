@@ -8,7 +8,7 @@ import sys
 SRC_PATH = Path(__file__).parent / "src"
 sys.path.append(SRC_PATH.as_posix())
 
-from phantomjs_driver.driver.download import download_driver, setup_logging
+from phasma.driver.download import download_driver, setup_logging
 
 logger = logging.getLogger("setup")
 
@@ -34,7 +34,7 @@ class bdist_wheel(_bdist_wheel):
     def run(self):
         os_name, arch = self.detect_platform()
         logger.info(f"Downloading PhantomJS for {os_name} {arch}")
-        dest = SRC_PATH / "phantomjs_driver" / "driver"
+        dest = SRC_PATH / "phasma" / "driver"
         success = download_driver(dest=dest, os_name=os_name, arch=arch)
         if not success:
             logger.error("Download Failed")
@@ -61,7 +61,7 @@ if __name__ == "__main__":
         package_dir={"": "src"},
         include_package_data=True,
         package_data={
-            "phantomjs_driver.driver.phantomjs": ["*", "**/*"],
+            "phasma.driver.phantomjs": ["*", "**/*"],
         },
         options={
             "egg_info": {"egg_base": "."},

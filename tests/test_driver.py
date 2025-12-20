@@ -3,7 +3,7 @@ from pathlib import Path
 import os
 import stat
 
-from phantomjs_driver.driver import Driver
+from phasma.driver import Driver
 
 
 class TestDriver:

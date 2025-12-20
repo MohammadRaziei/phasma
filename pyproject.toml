@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 "" = "src"
 
 [project]
-name = "phantomjs-driver"
+name = "phasma"
 version = "0.0.1"
 description = ""
 readme = "README.md"
@@ -26,9 +26,9 @@ classifiers = [
 ]
 
 [project.urls]
-Source = "https://github.com/mohammadraziei/phantomjs-driver"
-Issues = "https://github.com/mohammadraziei/phantomjs-driver/issues"
-Documentation = "https://mohammadraziei.github.io/phantomjs-driver" 
+Source = "https://github.com/mohammadraziei/phasma"
+Issues = "https://github.com/mohammadraziei/phasma/issues"
+Documentation = "https://mohammadraziei.github.io/phasma" 
 
 
 
@@ -95,7 +95,7 @@ unfixable = [
 ]
 
 [tool.ruff.lint.isort]
-known-first-party = ["phantomjs_driver"]
+known-first-party = ["phasma"]
 
 [tool.ruff.lint.flake8-tidy-imports]
 ban-relative-imports = "all"
@@ -106,16 +106,16 @@ ban-relative-imports = "all"
 "__init__.py" = ["F401"]
 
 [tool.coverage.run]
-source_pkgs = ["phantomjs_driver"]
+source_pkgs = ["phasma"]
 branch = true
 parallel = true
 omit = [
-  "src/phantomjs_driver/__about__.py",
+  "src/phasma/__about__.py",
 ]
 
 
 [tool.coverage.paths]
-phantomjs_driver = ["src/phantomjs_driver"]
+phasma = ["src/phasma"]
 tests = ["tests"]
 
 [tool.coverage.report]

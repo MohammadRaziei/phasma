@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 DRIVER_PATH = Path(__file__).parent
 
-BASE_URL = "https://github.com/MohammadRaziei/phantomjs-driver/releases/download/drivers"
+BASE_URL = "https://github.com/MohammadRaziei/phasma/releases/download/drivers"
 
 DRIVER_VERSION = "2.1.1"
 
