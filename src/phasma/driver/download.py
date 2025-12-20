@@ -91,16 +91,13 @@ def download_and_extract(
     if force and archive.exists():
         archive.unlink()
 
-    name = os.path.basename(archive)
-    for suf in ARCHIVE_SUFFIXES:
-        if name.endswith(suf):
-            name = name[:-len(suf)]
-    extract_path = extract_dir / name 
+    dest = extract_dir / "phantomjs"
 
-    if extract_path.exists():
-        logger.info("Path exists: %s", extract_path)
+
+    if (dest / "bin").exists():
+        logger.info("Path exists: %s", dest)
         if force:
-            os.remove(extract_path)
+            os.remove(dest)
         else:
             return
 
@@ -111,7 +108,6 @@ def download_and_extract(
     if sha256(archive) != checksum:
         raise RuntimeError("Checksum mismatch")
     
-    dest = extract_dir / "phantomjs"
 
     if dest.exists():
         shutil.rmtree(dest)
@@ -119,10 +115,16 @@ def download_and_extract(
     logger.info("Extracting")
     extract(archive, extract_dir)
 
-    os.rename(extract_path, extract_dir / "phantomjs")
+    name = os.path.basename(archive)
+    for suf in ARCHIVE_SUFFIXES:
+        if name.endswith(suf):
+            name = name[:-len(suf)]
+    extract_path = extract_dir / name 
+
+    os.rename(extract_path, dest)
     os.remove(archive)
 
-    return (extract_dir / "phantomjs" / "bin").exists()
+    return (dest / "bin").exists()
 
 
 def download_driver(
