@@ -143,22 +143,52 @@ def coverage(session: nox.Session) -> None:
 @nox.session(python=False)
 def clean(session: nox.Session) -> None:
     """Clean up build artifacts and downloaded drivers."""
+    import shutil
+    
     # Remove build directories
-    for dir_name in ["build", "dist", "*.egg-info", "coverage_html_report"]:
-        if Path(dir_name).exists():
-            run_command(["rm", "-rf", dir_name])
+    for dir_name in ["build", "dist", "coverage_html_report"]:
+        dir_path = Path(dir_name)
+        if dir_path.exists():
+            print(f"Removing {dir_path}")
+            shutil.rmtree(dir_path, ignore_errors=True)
+    
+    # Remove *.egg-info directories using glob
+    for egg_info in Path(".").glob("*.egg-info"):
+        if egg_info.exists():
+            print(f"Removing {egg_info}")
+            shutil.rmtree(egg_info, ignore_errors=True)
     
     # Remove downloaded driver files
     driver_dir = PACKAGE_DIR / "driver" / "phantomjs"
     if driver_dir.exists():
-        run_command(["rm", "-rf", str(driver_dir)])
+        print(f"Removing {driver_dir}")
+        shutil.rmtree(driver_dir, ignore_errors=True)
     
-    # Remove __pycache__ directories
-    run_command(["find", ".", "-type", "d", "-name", "__pycache__", "-exec", "rm", "-rf", "{}", "+"])
-    run_command(["find", ".", "-type", "f", "-name", "*.pyc", "-delete"])
-    run_command(["find", ".", "-type", "f", "-name", "*.pyo", "-delete"])
-    run_command(["find", ".", "-type", "f", "-name", "*.pyd", "-delete"])
-    run_command(["find", ".", "-type", "f", "-name", ".coverage", "-delete"])
+    # Remove __pycache__ directories and .pyc files
+    for pycache in Path(".").rglob("__pycache__"):
+        if pycache.exists():
+            print(f"Removing {pycache}")
+            shutil.rmtree(pycache, ignore_errors=True)
+    
+    for pyc in Path(".").rglob("*.pyc"):
+        if pyc.exists():
+            print(f"Removing {pyc}")
+            pyc.unlink(missing_ok=True)
+    
+    for pyo in Path(".").rglob("*.pyo"):
+        if pyo.exists():
+            print(f"Removing {pyo}")
+            pyo.unlink(missing_ok=True)
+    
+    for pyd in Path(".").rglob("*.pyd"):
+        if pyd.exists():
+            print(f"Removing {pyd}")
+            pyd.unlink(missing_ok=True)
+    
+    for coverage_file in Path(".").rglob(".coverage"):
+        if coverage_file.exists():
+            print(f"Removing {coverage_file}")
+            coverage_file.unlink(missing_ok=True)
 
 
 @nox.session(python=False)
