@@ -10,7 +10,6 @@ sys.path.append(SRC_PATH.as_posix())
 
 from phasma.driver.download import download_driver, setup_logging
 
-
 setup_logging()
 
 logger = logging.getLogger("setup")
@@ -20,16 +19,12 @@ class bdist_wheel(_bdist_wheel):
     def detect_platform(self):
         os_name = os.getenv("TARGET_OS")
         arch = os.getenv("TARGET_ARCH")
-
         if not os_name or not arch:
-
             os_name = platform.system().lower()
             machine = platform.machine().lower()
             arch = "64bit"
-
             if os_name == "linux":
                 arch = "64bit" if "64" in machine else "32bit"
-
         return os_name, arch
 
 
@@ -41,7 +36,8 @@ class bdist_wheel(_bdist_wheel):
         if not success:
             logger.error("Download Failed")
             raise RuntimeError("Download Failed")
-
+        bin_path = dest / "phantomjs" / "bin"
+        logger.info("Downloading is successful and %s %s", bin_path, "exists" if bin_path.exists() else "doesn't exist")
         super().run()
 
     def finalize_options(self):
