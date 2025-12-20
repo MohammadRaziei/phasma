@@ -33,7 +33,7 @@ jobs:
       - name: Set TARGET_OS and TARGET_ARCH
         run: |
           OS="${${{ matrix.os_arch}}%%_*}"
-          ARCH="${${{ matrix.os_arch_}}##*}"
+          ARCH="${${{ matrix.os_arch }}_##*}"
           echo "TARGET_OS=$OS" >> $GITHUB_ENV
           echo "TARGET_ARCH=$ARCH" >> $GITHUB_ENV
           echo "Detected TARGET_OS=$OS, TARGET_ARCH=$ARCH"
