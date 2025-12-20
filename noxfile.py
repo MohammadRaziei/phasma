@@ -173,8 +173,8 @@ def clean(session: nox.Session) -> None:
     remove_glob("*.egg-info")
     
     # Remove downloaded driver files
-    # driver_dir = PACKAGE_DIR / "driver" / "phantomjs"
-    # remove_path(driver_dir)
+    driver_dir = PACKAGE_DIR / "driver" / "phantomjs"
+    remove_path(driver_dir)
     
     # Remove __pycache__ directories
     remove_rglob("__pycache__")
