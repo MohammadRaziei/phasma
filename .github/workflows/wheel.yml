@@ -64,7 +64,9 @@ jobs:
           esac
 
       - name: Build wheel (download driver)
-        run: python setup.py bdist_wheel
+        run: |
+          python setup.py bdist_wheel
+          python setup.py bdist_wheel
 
       - name: List built wheel
         run: ls -lR .
