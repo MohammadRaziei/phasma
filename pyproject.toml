@@ -45,7 +45,7 @@ filterwarnings = [
 ]
 testpaths = ["tests"]
 pythonpath = [
-  "src"
+  "."
 ]
 
 
@@ -108,12 +108,12 @@ source_pkgs = ["phasma"]
 branch = true
 parallel = true
 omit = [
-  "src/phasma/__about__.py",
+  "phasma/__about__.py",
 ]
 
 
 [tool.coverage.paths]
-phasma = ["src/phasma"]
+phasma = ["./phasma"]
 tests = ["tests"]
 
 [tool.coverage.report]

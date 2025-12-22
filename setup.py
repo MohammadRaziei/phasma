@@ -1,11 +1,11 @@
 import platform, os
 from pathlib import Path
-from setuptools import setup, find_namespace_packages
+from setuptools import setup
 from wheel.bdist_wheel import bdist_wheel as _bdist_wheel
 import sys
 import logging
 
-SRC_PATH = Path(__file__).parent / "src"
+SRC_PATH = Path(__file__).parent
 sys.path.append(SRC_PATH.as_posix())
 
 from phasma.driver.download import download_driver, setup_logging
@@ -55,8 +55,8 @@ class bdist_wheel(_bdist_wheel):
 
 if __name__ == "__main__":
     setup(
-        packages=find_namespace_packages(where="src"),
-        package_dir={"": "src"},
+        # packages=find_namespace_packages(where="src"),
+        # package_dir={"": "src"},
         include_package_data=True,
         package_data={
             "phasma.driver.phantomjs": ["*", "**/*"],
