@@ -40,7 +40,7 @@ jobs:
 
       - name: Upgrade pip & install build tools
         run: |
-          python -m pip install --upgrade pip setuptools wheel
+          python -m pip install --upgrade pip setuptools wheel build
 
       - name: Set TARGET_OS and TARGET_ARCH
         run: |
