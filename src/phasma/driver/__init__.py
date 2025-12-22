@@ -1,12 +1,13 @@
 import os
 import platform
-from pathlib import Path
 import stat
-from typing import List
+import subprocess
+from pathlib import Path
+from typing import List, Optional, Sequence, Union
 
-from .download import download_driver, DRIVER_PATH, DRIVER_VERSION
+from .download import DRIVER_PATH, DRIVER_VERSION, download_driver
 
-phasma_PATH = DRIVER_PATH / "phantomjs"
+PHASMA_PATH = DRIVER_PATH / "phantomjs"
 
 
 class Driver:
@@ -18,22 +19,28 @@ class Driver:
     - Downloads the driver automatically if not present.
     """
 
+    @staticmethod
+    def download(os_name: str | None = None, arch: str | None = None):
+        return download_driver(dest=DRIVER_PATH, os_name=os_name, arch=arch)
+
     def __init__(self):
         # Determine the correct executable name based on the OS
-        system = platform.system()
-        exe_name = "phantomjs.exe" if system == "Windows" else "phantomjs"
+        self.system = platform.system()
+        self.exe_name = "phantomjs.exe" if self.system == "Windows" else "phantomjs"
 
         # Final expected path: <DRIVER_PATH>/bin/<phantomjs or phantomjs.exe>
-        self._bin_path = phasma_PATH / "bin" / exe_name
+        self._bin_path = PHASMA_PATH / "bin" / self.exe_name
 
         # If the binary doesn't exist, download and set it up
         if not self._bin_path.is_file():
             # Download the driver to the root directory first
-            download_driver(dest=DRIVER_PATH)
+            self.download()
 
+        self.get_exe_access()
 
+    def get_exe_access(self):
         # On non-Windows systems, ensure the file is executable
-        if system != "Windows":
+        if self.system != "Windows":
             if not os.access(self._bin_path, os.X_OK):
                 try:
                     current_mode = self._bin_path.stat().st_mode
@@ -46,17 +53,61 @@ class Driver:
     def bin_path(self) -> Path:
         """Returns the absolute path to the PhantomJS executable."""
         return self._bin_path
-    
+
     @property
     def examples_path(self) -> Path:
-        return phasma_PATH / "examples"
-    
+        return PHASMA_PATH / "examples"
 
     @property
     def examples_list(self) -> List:
         return list(self.examples_path.iterdir())
 
-    
     @property
     def version(self) -> str:
         return DRIVER_VERSION
+
+    def exec(
+        self,
+        args: Union[str, Sequence[str]],
+        *,
+        capture_output: bool = False,
+        timeout: Optional[float] = None,
+        check: bool = False,
+        **kwargs,
+    ) -> subprocess.CompletedProcess:
+        """
+        Execute PhantomJS with the given arguments.
+
+        Args:
+            args: Command line arguments as a string or sequence of strings.
+            capture_output: If True, capture stdout and stderr.
+            timeout: Timeout in seconds.
+            check: If True, raise CalledProcessError on non-zero exit code.
+            **kwargs: Additional arguments passed to subprocess.run.
+
+        Returns:
+            subprocess.CompletedProcess instance.
+
+        Example:
+            >>> driver = Driver()
+            >>> result = driver.exec(["--version"])
+            >>> print(result.stdout)
+        """
+        if isinstance(args, str):
+            # Split by spaces, but keep quoted strings intact
+            import shlex
+
+            args = shlex.split(args)
+
+        cmd = [str(self.bin_path), *list(args)]
+        return subprocess.run(
+            cmd,
+            capture_output=capture_output,
+            timeout=timeout,
+            check=check,
+            **kwargs,
+        )
+
+    def run(self, *args, **kwargs) -> subprocess.CompletedProcess:
+        """Alias for exec."""
+        return self.exec(*args, **kwargs)

@@ -134,7 +134,7 @@ def download_driver(
     os_name: str | None = None,
     arch: str | None = None,
     force: bool = False,
-) -> Path:
+) -> bool:
     if dest is None:
         dest = DRIVER_PATH
     if os_name is None:
