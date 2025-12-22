@@ -1,6 +1,6 @@
 import pytest
 from pathlib import Path
-from phasma.phasma import download_driver, render_page, render_url, execjs
+from phasma import download_driver, render_page, render_url, execjs
 
 
 class TestPhasma:
