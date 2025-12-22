@@ -94,10 +94,8 @@ class Driver:
             >>> print(result.stdout)
         """
         if isinstance(args, str):
-            # Split by spaces, but keep quoted strings intact
-            import shlex
-
-            args = shlex.split(args)
+            # Split by spaces (simple split, no quoted string handling)
+            args = args.split()
 
         cmd = [str(self.bin_path), *list(args)]
         return subprocess.run(
