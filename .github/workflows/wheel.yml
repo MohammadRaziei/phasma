@@ -65,8 +65,8 @@ jobs:
 
       - name: Build wheel (download driver)
         run: |
-          python setup.py bdist_wheel
-          python setup.py bdist_wheel
+          python -m phasma driver download --os $TARGET_OS --arch $TARGET_ARCH
+          python -m build --no-isolation
 
       - name: List built wheel
         run: ls -lR .
