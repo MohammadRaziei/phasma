@@ -1,6 +1,8 @@
 # Phasma: PhantomJS Driver for Python
 
+<div align="center">
 <img src="https://github.com/MohammadRaziei/phasma/raw/master/docs/images/phasma.jpg" width="30%" alt="Phasma Logo" />
+</div>
 
 **Phasma** is a Python library that provides a clean, high-level interface to PhantomJS, enabling headless browser automation, web page rendering, and JavaScript execution. It simplifies the process of downloading, managing, and interacting with PhantomJS, making it ideal for web scraping, screenshot capture, and automated testing.
 
