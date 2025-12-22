@@ -136,22 +136,6 @@ pytest tests/
 
 All core functionality is covered by unit tests, including page rendering, URL fetching, and JavaScript execution.
 
-## Project Structure
-
-```
-phasma/
-├── phasma/              # Main package
-│   ├── __init__.py
-│   ├── __main__.py     # CLI entry point
-│   ├── phasma.py       # Core functions
-│   └── driver/         # Driver management
-│       ├── __init__.py
-│       ├── driver.py
-│       └── download.py
-├── tests/              # Test suite
-├── docs/               # Documentation and images
-└── pyproject.toml      # Project metadata
-```
 
 ## Contributing
 
