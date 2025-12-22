@@ -12,7 +12,6 @@ class TestPhasma:
         result = download_driver()
         assert isinstance(result, bool)
 
-    @pytest.mark.skip(reason="render_page currently hangs due to PhantomJS issues")
     def test_render_page_file(self):
         """Test rendering an HTML file."""
         html_file = Path(__file__).parent / "data" / "test_page.html"
@@ -21,7 +20,6 @@ class TestPhasma:
         assert "<h1>Hello, Phasma!</h1>" in rendered
         assert "<title>Test Page</title>" in rendered
 
-    @pytest.mark.skip(reason="render_page currently hangs due to PhantomJS issues")
     def test_render_page_string(self):
         """Test rendering an HTML string."""
         html_string = "<html><body><p>Hello World</p></body></html>"

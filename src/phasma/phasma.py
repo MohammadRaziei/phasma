@@ -62,16 +62,14 @@ def render_page(
         html_content = page
 
     # Create a temporary script for PhantomJS using setContent
-    # Escape backticks and backslashes for JavaScript template literal
-    escaped = html_content.replace('\\', '\\\\').replace('`', '\\`')
+    # Escape newlines and backticks for JavaScript string
+    escaped = html_content.replace('\\', '\\\\').replace('`', '\\`').replace('\n', '\\n').replace('\r', '\\r')
     script = f"""
     var page = require('webpage').create();
     page.viewportSize = {{ width: {viewport_size.split('x')[0]}, height: {viewport_size.split('x')[1]} }};
-    page.content = `{escaped}`;
-    window.setTimeout(function() {{
-        console.log(page.content);
-        phantom.exit();
-    }}, {wait_time});
+    page.content = "{escaped}";
+    console.log(page.content);
+    phantom.exit();
     """
 
     result = _run_phantomjs_script(script)
