@@ -1,0 +1,51 @@
+import pytest
+from pathlib import Path
+from phasma.phasma import download_driver, render_page, render_url, execjs
+
+
+class TestPhasma:
+    """Test suite for the Phasma functions."""
+
+    def test_download_driver(self):
+        """Test download_driver function."""
+        # This test may download the driver if not present; we just ensure no exception
+        result = download_driver()
+        assert isinstance(result, bool)
+
+    def test_render_page_file(self):
+        """Test rendering an HTML file."""
+        html_file = Path(__file__).parent / "data" / "test_page.html"
+        rendered = render_page(html_file)
+        assert isinstance(rendered, str)
+        assert "<h1>Hello, Phasma!</h1>" in rendered
+        assert "<title>Test Page</title>" in rendered
+
+    def test_render_page_string(self):
+        """Test rendering an HTML string."""
+        html_string = "<html><body><p>Hello World</p></body></html>"
+        rendered = render_page(html_string)
+        assert isinstance(rendered, str)
+        assert "<p>Hello World</p>" in rendered
+
+    def test_render_url(self):
+        """Test rendering a URL (requires internet)."""
+        pytest.skip("URL rendering test requires internet; skipping for now")
+        # rendered = render_url("https://example.com")
+        # assert isinstance(rendered, str)
+        # assert "Example Domain" in rendered
+
+    def test_execjs(self):
+        """Test executing JavaScript."""
+        output = execjs("console.log('Hello from JS');")
+        assert "Hello from JS" in output
+
+    def test_execjs_with_args(self):
+        """Test executing JavaScript with arguments."""
+        # Simple script that logs arguments
+        output = execjs("""
+            var system = require('system');
+            system.args.forEach(function(arg, i) {
+                console.log('arg ' + i + ': ' + arg);
+            });
+        """, args=["--foo", "bar"])
+        assert "arg" in output
