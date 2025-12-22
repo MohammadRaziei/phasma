@@ -54,46 +54,25 @@ def render_page(
     Returns:
         Rendered HTML as string.
     """
-    # Create a temporary script for PhantomJS
+    # Read HTML content
+    if isinstance(page, Path) or (isinstance(page, str) and os.path.isfile(page)):
+        with open(page, 'r', encoding='utf-8') as f:
+            html_content = f.read()
+    else:
+        html_content = page
+
+    # Create a temporary script for PhantomJS using setContent
+    # Escape backticks and backslashes for JavaScript template literal
+    escaped = html_content.replace('\\', '\\\\').replace('`', '\\`')
     script = f"""
     var page = require('webpage').create();
     page.viewportSize = {{ width: {viewport_size.split('x')[0]}, height: {viewport_size.split('x')[1]} }};
+    page.content = `{escaped}`;
+    window.setTimeout(function() {{
+        console.log(page.content);
+        phantom.exit();
+    }}, {wait_time});
     """
-    if isinstance(page, Path) or (isinstance(page, str) and os.path.isfile(page)):
-        # It's a file path
-        script += f"""
-        page.open('file://{os.path.abspath(str(page))}', function(status) {{
-            if (status === 'success') {{
-                window.setTimeout(function() {{
-                    console.log(page.content);
-                    phantom.exit();
-                }}, {wait_time});
-            }} else {{
-                console.error('Failed to load page');
-                phantom.exit(1);
-            }}
-        }});
-        """
-    else:
-        # It's an HTML string, write to temp file
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.html', delete=False) as f:
-            f.write(page)
-            temp_file = f.name
-        script += f"""
-        page.open('file://{temp_file}', function(status) {{
-            if (status === 'success') {{
-                window.setTimeout(function() {{
-                    console.log(page.content);
-                    phantom.exit();
-                }}, {wait_time});
-            }} else {{
-                console.error('Failed to load page');
-                phantom.exit(1);
-            }}
-        }});
-        """
-        # Clean up temp file after script execution
-        os.unlink(temp_file)
 
     result = _run_phantomjs_script(script)
     rendered = result.stdout.decode().strip() if result.stdout else ""
