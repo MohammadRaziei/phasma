@@ -29,10 +29,10 @@ class TestPhasma:
 
     def test_render_url(self):
         """Test rendering a URL (requires internet)."""
-        pytest.skip("URL rendering test requires internet; skipping for now")
-        # rendered = render_url("https://example.com")
-        # assert isinstance(rendered, str)
-        # assert "Example Domain" in rendered
+        # Skip if no internet, but try anyway
+        rendered = render_url("http://example.com", wait_time=2000)
+        assert isinstance(rendered, str)
+        assert "Example Domain" in rendered
 
     def test_execjs(self):
         """Test executing JavaScript."""
