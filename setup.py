@@ -1,7 +1,7 @@
 import platform, os
 from pathlib import Path
 from setuptools import setup
-from wheel.bdist_wheel import bdist_wheel as _bdist_wheel
+from wheel.bdist_wheel import bdist_wheel
 import sys
 import logging
 
@@ -15,7 +15,7 @@ setup_logging()
 logger = logging.getLogger("setup")
 
 
-class bdist_wheel(_bdist_wheel):
+class bdist_wheel_custom(bdist_wheel):
     def detect_platform(self):
         os_name = os.getenv("TARGET_OS")
         arch = os.getenv("TARGET_ARCH")
@@ -66,6 +66,6 @@ if __name__ == "__main__":
         },
         platforms=["Linux", "Windows", "macOS"],
         cmdclass={
-            "bdist_wheel": bdist_wheel,
+            "bdist_wheel": bdist_wheel_custom,
         },
     )

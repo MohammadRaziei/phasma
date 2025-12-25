@@ -27,8 +27,8 @@ class Driver:
     """
 
     @staticmethod
-    def download(os_name: str | None = None, arch: str | None = None):
-        return download_driver(dest=DRIVER_PATH, os_name=os_name, arch=arch)
+    def download(os_name: str | None = None, arch: str | None = None, force: bool = False):
+        return download_driver(dest=DRIVER_PATH, os_name=os_name, arch=arch, force=force)
 
     def __init__(self):
         # Determine the correct executable name based on the OS
@@ -80,6 +80,8 @@ class Driver:
         capture_output: bool = False,
         timeout: Optional[float] = None,
         check: bool = False,
+        ssl: bool = False,
+        env: Optional[dict] = None,
         **kwargs,
     ) -> subprocess.CompletedProcess:
         """
@@ -90,6 +92,8 @@ class Driver:
             capture_output: If True, capture stdout and stderr.
             timeout: Timeout in seconds.
             check: If True, raise CalledProcessError on non-zero exit code.
+            ssl: If False, set OPENSSL_CONF environment variable to empty string.
+            env: Optional environment variables dictionary for subprocess.
             **kwargs: Additional arguments passed to subprocess.run.
 
         Returns:
@@ -105,11 +109,19 @@ class Driver:
             args = args.split()
 
         cmd = [str(self.bin_path), *list(args)]
+        
+        # Handle SSL environment
+        if not ssl:
+            if env is None:
+                env = os.environ.copy()
+            env['OPENSSL_CONF'] = ''
+        
         return subprocess.run(
             cmd,
             capture_output=capture_output,
             timeout=timeout,
             check=check,
+            env=env,
             **kwargs,
         )
 

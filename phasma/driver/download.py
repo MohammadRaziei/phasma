@@ -98,7 +98,7 @@ def download_and_extract(
     if is_ok:
         logger.info("Path exists: %s", dest)
         if force:
-            os.remove(dest)
+            shutil.rmtree(dest)
         else:
             return is_ok
 
