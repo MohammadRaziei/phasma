@@ -31,6 +31,7 @@ def main():
     exec_parser.add_argument("args", nargs="*", help="Arguments to pass to PhantomJS (e.g., '--version', 'script.js')")
     exec_parser.add_argument("--capture-output", action="store_true", help="Capture stdout and stderr")
     exec_parser.add_argument("--timeout", type=float, help="Timeout in seconds")
+    exec_parser.add_argument("--cwd", help="Working directory for PhantomJS process")
     exec_parser.add_argument("--ssl", action="store_true", default=False, help="Enable SSL (default: False)")
     exec_parser.add_argument("--no-ssl", dest="ssl", action="store_false", help="Disable SSL (set OPENSSL_CONF='')")
 
@@ -76,6 +77,7 @@ def main():
                     capture_output=args.capture_output,
                     timeout=args.timeout,
                     ssl=args.ssl,
+                    cwd=args.cwd,
                 )
             except Exception as e:
                 print(f"Error: {e}", file=sys.stderr)

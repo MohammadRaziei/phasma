@@ -6,13 +6,8 @@ import sys
 from pathlib import Path
 from typing import List, Optional, Sequence, Union
 
-# Handle relative import when script is run directly
-if __package__ is None:
-    # Add src directory to sys.path to allow absolute imports
-    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-    from download import DRIVER_PATH, DRIVER_VERSION, download_driver
-else:
-    from .download import DRIVER_PATH, DRIVER_VERSION, download_driver
+
+from .download import DRIVER_PATH, DRIVER_VERSION, download_driver
 
 PHASMA_PATH = DRIVER_PATH / "phantomjs"
 
@@ -78,10 +73,11 @@ class Driver:
         args: Union[str, Sequence[str]],
         *,
         capture_output: bool = False,
-        timeout: Optional[float] = None,
+        timeout: Optional[float] = 30,
         check: bool = False,
         ssl: bool = False,
         env: Optional[dict] = None,
+        cwd: Optional[Union[str, Path]] = None,
         **kwargs,
     ) -> subprocess.CompletedProcess:
         """
@@ -94,6 +90,7 @@ class Driver:
             check: If True, raise CalledProcessError on non-zero exit code.
             ssl: If False, set OPENSSL_CONF environment variable to empty string.
             env: Optional environment variables dictionary for subprocess.
+            cwd: Optional working directory for subprocess.
             **kwargs: Additional arguments passed to subprocess.run.
 
         Returns:
@@ -122,6 +119,7 @@ class Driver:
             timeout=timeout,
             check=check,
             env=env,
+            cwd=cwd,
             **kwargs,
         )
 
@@ -129,41 +127,3 @@ class Driver:
         """Alias for exec."""
         return self.exec(*args, **kwargs)
 
-
-if __name__ == "__main__":
-    import argparse
-    import os
-    import sys
-
-    # Add src directory to sys.path to allow relative imports
-    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-
-    parser = argparse.ArgumentParser(
-        description="Run PhantomJS via Driver", epilog="Example: python -m phasma.driver.driver --version"
-    )
-    parser.add_argument("args", nargs="*", help="Arguments to pass to PhantomJS (e.g., '--version', 'script.js')")
-    parser.add_argument("--capture-output", action="store_true", help="Capture stdout and stderr")
-    parser.add_argument("--timeout", type=float, help="Timeout in seconds")
-    parser.add_argument("--check", action="store_true", help="Raise CalledProcessError on non-zero exit code")
-    parsed, unknown = parser.parse_known_args()
-
-    driver = Driver()
-    try:
-        # Combine known positional args with unknown args (which are likely PhantomJS options)
-        all_args = parsed.args + unknown
-        result = driver.exec(
-            all_args,
-            capture_output=parsed.capture_output,
-            timeout=parsed.timeout,
-            check=parsed.check,
-        )
-    except Exception as e:
-        print(f"Error: {e}", file=sys.stderr)
-        sys.exit(1)
-
-    if parsed.capture_output:
-        if result.stdout:
-            sys.stdout.buffer.write(result.stdout)
-        if result.stderr:
-            sys.stderr.buffer.write(result.stderr)
-    sys.exit(result.returncode)

@@ -63,8 +63,16 @@ python -m phasma driver --version
 # Show driver executable path
 python -m phasma driver --path
 
-# Download the driver
+# Download the driver (use --force to re-download)
 python -m phasma driver download
+python -m phasma driver download --force
+
+# Execute PhantomJS directly with arguments
+python -m phasma driver exec --version
+python -m phasma driver exec script.js
+python -m phasma driver exec --cwd /path/to/working/dir script.js
+python -m phasma driver exec --ssl --timeout 10 script.js
+python -m phasma driver exec --no-ssl --capture-output script.js
 
 # Render an HTML file
 python -m phasma render-page tests/data/test_page.html
@@ -78,8 +86,19 @@ python -m phasma execjs "console.log('Hello');"
 
 ## API Reference
 
-### `download_driver(os_name=None, arch=None)`
-Downloads the PhantomJS driver for the given OS and architecture. If no arguments are provided, it auto‑detects the current platform.
+### `download_driver(os_name=None, arch=None, force=False)`
+Downloads the PhantomJS driver for the given OS and architecture. If no arguments are provided, it auto‑detects the current platform. Set `force=True` to re‑download even if the driver already exists.
+
+### `Driver.exec(args, *, capture_output=False, timeout=30, check=False, ssl=False, env=None, cwd=None, **kwargs)`
+Executes PhantomJS with the given arguments. Returns a `subprocess.CompletedProcess` instance.
+
+- `args`: Command line arguments as a string or sequence of strings.
+- `capture_output`: If `True`, capture stdout and stderr.
+- `timeout`: Timeout in seconds.
+- `check`: If `True`, raise `CalledProcessError` on non‑zero exit code.
+- `ssl`: If `False` (default), set `OPENSSL_CONF` environment variable to empty string (disables SSL verification).
+- `env`: Optional environment variables dictionary for subprocess.
+- `cwd`: Optional working directory for subprocess.
 
 ### `render_page(page, output=None, viewport_size="1024x768", wait_time=100, **kwargs)`
 Renders an HTML page (file path or HTML string) and returns the rendered HTML. Optionally saves the output to a file.
