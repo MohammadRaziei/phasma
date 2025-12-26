@@ -48,7 +48,7 @@ class bdist_wheel_custom(bdist_wheel):
         elif os_name == "windows":
             self.plat_name = "win_amd64"
         elif os_name == "darwin":
-            self.plat_name = "macosx_10_9_x86_64"
+            self.plat_name = "macosx_10_9_universal2"
 
         self.plat_name_supplied = True
 
