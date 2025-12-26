@@ -99,7 +99,9 @@ jobs:
           path: dist
 
       - name: Install wheel
-        run: pip install --no-index --upgrade --find-links ./dist/ phasma
+        run: |
+          ls dist
+          pip install --no-index --upgrade --find-links ./dist/ phasma
 
       - name: Install test dependencies
         run: |
