@@ -1,17 +1,19 @@
-# Phasma: PhantomJS Driver for Python
+# Phasma – Modern PhantomJS Driver for Python
 
 <div align="center">
 <img src="https://github.com/MohammadRaziei/phasma/raw/master/docs/images/phasma.jpg" width="30%" style="min-width: 200px;" alt="Phasma Logo" />
 </div>
 
-**Phasma** is a Python library that provides a clean, high-level interface to PhantomJS, enabling headless browser automation, web page rendering, and JavaScript execution. It simplifies the process of downloading, managing, and interacting with PhantomJS, making it ideal for web scraping, screenshot capture, and automated testing.
+**Phasma** is a Python library that provides a clean, high‑level interface to PhantomJS, enabling headless browser automation, web page rendering, and JavaScript execution. It simplifies the process of downloading, managing, and interacting with PhantomJS, making it ideal for web scraping, screenshot capture, and automated testing.
 
 ## Features
 
 - **Bundled Driver**: PhantomJS driver is included in the package (Windows, macOS, Linux). No separate download needed.
 - **Page Rendering**: Render HTML files, strings, and remote URLs with JavaScript support.
 - **JavaScript Execution**: Run arbitrary JavaScript code in a PhantomJS context.
-- **CLI Interface**: Command-line tools for quick operations.
+- **Direct PhantomJS Execution**: Execute PhantomJS with full control over arguments, environment, and working directory.
+- **SSL Control**: Disable SSL verification by setting `OPENSSL_CONF` environment variable.
+- **CLI Interface**: Command‑line tools for quick operations.
 - **Cross‑Platform**: Works on Windows, Linux, and macOS.
 - **Lightweight**: Minimal dependencies, focused on simplicity and reliability.
 
@@ -68,7 +70,6 @@ python -m phasma driver download
 python -m phasma driver download --force
 
 # Execute PhantomJS directly with arguments
-python -m phasma driver exec --version
 python -m phasma driver exec script.js
 python -m phasma driver exec --cwd /path/to/working/dir script.js
 python -m phasma driver exec --ssl --timeout 10 script.js
