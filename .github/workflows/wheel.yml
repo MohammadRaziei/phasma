@@ -96,7 +96,6 @@ jobs:
       - name: Download built wheel
         uses: actions/download-artifact@v4
         with:
-          name: dist
           path: dist
 
       - name: Install wheel
