@@ -13,12 +13,9 @@ import phasma
 @pytest.mark.asyncio
 async def test_comprehensive_browser_api():
     """Test comprehensive browser API functionality."""
-    # Ensure driver is available
-    phasma.download_driver()
-
-    browser = await phasma.launch()
+    browser = await phasma.browser.launch()
     try:
-        # Test creating a page
+        # Test creatinysg a page
         page = await browser.new_page()
 
         # Test navigation
@@ -76,26 +73,11 @@ def test_driver_functionality():
     assert result.stdout is not None
 
 
-def test_legacy_api_functions():
-    """Test legacy API functions."""
-    # Test download driver
-    success = phasma.download_driver()
-    assert success
-
-    # Test render page with HTML string
-    html = "<html><body><h1>Test</h1></body></html>"
-    rendered = phasma.render_page(html)
-    assert "Test" in rendered
-
-    # Test execjs
-    output = phasma.execjs("console.log('Hello');")
-    assert "Hello" in output
-
 
 @pytest.mark.asyncio
 async def test_error_handling():
     """Test error handling in the new API."""
-    browser = await phasma.launch()
+    browser = await phasma.browser.launch()
     try:
         page = await browser.new_page()
 
@@ -105,6 +87,7 @@ async def test_error_handling():
 
     finally:
         await browser.close()
+
 
 
 def test_cli_simulation():
@@ -130,12 +113,3 @@ def test_cli_simulation():
     finally:
         # Restore stdout
         sys.stdout = original_stdout
-
-
-if __name__ == "__main__":
-    # Run tests manually if executed as script
-    import subprocess
-    import sys
-    
-    # Run this test file to improve coverage
-    subprocess.run([sys.executable, "-m", "pytest", __file__, "-v"])

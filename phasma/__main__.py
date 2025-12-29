@@ -7,8 +7,10 @@ import os
 import argparse
 import asyncio
 from pathlib import Path
+import asyncio
 
-from phasma.browser import launch, download_driver
+
+import phasma
 from phasma.phasma import render_page, render_url, execjs
 from phasma.driver import Driver
 
@@ -114,7 +116,7 @@ Examples:
 
     if args.command == "driver":
         if args.driver_action == "download":
-            success = download_driver(os_name=args.os, arch=args.arch, force=args.force)
+            success = Driver.download(os_name=args.os, arch=args.arch, force=args.force)
             if success:
                 print("Driver downloaded successfully.")
                 sys.exit(0)
@@ -184,7 +186,7 @@ Examples:
     elif args.command == "screenshot":
         # Use the new Playwright-like API for screenshot
         async def take_screenshot():
-            browser = await launch()
+            browser = await phasma.browser.launch()
             try:
                 page = await browser.new_page()
 
@@ -210,7 +212,7 @@ Examples:
     elif args.command == "pdf":
         # Use the new Playwright-like API for PDF generation
         async def generate_pdf():
-            browser = await launch()
+            browser = await phasma.browser.launch()
             try:
                 page = await browser.new_page()
 
@@ -221,7 +223,6 @@ Examples:
                 # Navigate to URL
                 await page.goto(args.url)
                 # Wait for the specified time
-                import asyncio
                 await asyncio.sleep(args.wait / 1000.0)  # Convert milliseconds to seconds
 
                 # Generate PDF with specified options
