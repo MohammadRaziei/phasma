@@ -385,50 +385,22 @@ The test suite covers:
 - Error handling and edge cases
 - CLI functionality
 
-## Performance Considerations
+## Performance Tips
 
-### Best Practices
+- **Resource Management**: Always close browsers/pages to free resources:
+  ```python
+  try:
+      browser = await launch()
+      page = await browser.new_page()
+      # ... do work
+  finally:
+      await page.close()  # or await browser.close()
+  ```
 
-1. **Resource Management**: Always close browsers and pages to free resources:
-   ```python
-   try:
-       browser = await launch()
-       page = await browser.new_page()
-       # ... do work
-   finally:
-       await page.close()  # or await browser.close()
-   ```
-
-2. **Reuse Browser Instances**: For multiple operations, reuse the same browser:
-   ```python
-   browser = await launch()
-   try:
-       for url in urls:
-           page = await browser.new_page()
-           await page.goto(url)
-           # ... process page
-           await page.close()  # Close just the page
-   finally:
-       await browser.close()  # Close browser when done
-   ```
-
-3. **Set Appropriate Timeouts**: Configure timeouts based on your needs:
-   ```python
-   await page.goto(url, timeout=30000)  # 30 seconds
-   ```
-
-4. **Use Async Operations**: Leverage async/await for concurrent operations:
-   ```python
-   tasks = [process_page(url) for url in urls]
-   results = await asyncio.gather(*tasks)
-   ```
-
-### Performance Tips
-
-- Use `page.wait_for_selector()` instead of fixed delays
-- Set appropriate viewport sizes for your use case
-- Consider using smaller viewport sizes for faster rendering
-- Close pages individually when processing multiple URLs with one browser
+- **Reuse Browser Instances**: For multiple operations, reuse the same browser instance
+- **Use Async Operations**: Leverage `asyncio.gather()` for concurrent operations
+- **Use `wait_for_selector()`**: Instead of fixed delays, wait for elements to appear
+- **Set Appropriate Viewport Sizes**: Smaller viewports may render faster
 
 ## Use Cases
 
@@ -454,17 +426,9 @@ The test suite covers:
 
 ## Troubleshooting
 
-### Common Issues
-
-1. **Timeout Errors**: Increase timeout values or check network connectivity
-2. **SSL Issues**: Use `--no-ssl` flag in CLI or configure SSL settings
-3. **Driver Download**: Ensure internet connectivity for initial driver download
-
-### Debugging Tips
-
-- Enable verbose logging for detailed information
-- Check PhantomJS driver path with `python -m phasma driver --path`
-- Verify PhantomJS version compatibility
+- **Timeout Errors**: Increase timeout values or check network connectivity
+- **SSL Issues**: Use `--no-ssl` flag in CLI or configure SSL settings
+- **Driver Issues**: Check driver path with `python -m phasma driver --path`
 
 ## Contributing
 
@@ -500,16 +464,14 @@ pip install -e ".[dev]"
 - Include type hints where appropriate
 - Add tests for all functionality
 
-## License
+## License & Versioning
 
-Phasma is distributed under the MIT License. See the [LICENSE](LICENSE) file for complete license text.
+Phasma is distributed under the MIT License. See the [LICENSE](LICENSE) file for details.
 
-## Versioning
-
-Phasma follows Semantic Versioning (SemVer):
-- MAJOR versions for incompatible API changes
-- MINOR versions for functionality added in a backward-compatible manner
-- PATCH versions for backward-compatible bug fixes
+Versioning follows Semantic Versioning (MAJOR.MINOR.PATCH):
+- MAJOR: Breaking changes
+- MINOR: New features (backward-compatible)
+- PATCH: Bug fixes (backward-compatible)
 
 ## Acknowledgments
 
