@@ -96,6 +96,11 @@ jobs:
       - name: Install test dependencies
         run: |
           pip install pytest-cov pytest-xdist pytest-asyncio
+
+      - name: Run tests
+        run: |
+          python -m driver download
+          python -m pytest tests/ -v --cov 
     
   test-whl:
     needs: [build_wheels]
@@ -149,15 +154,11 @@ jobs:
           fi
         shell: bash
 
-      - name: Run tests
-        run: |
-          python -m driver download
-          python -m pytest tests/ -v --cov -n 4
 
 
   release:
     name: Release Assets and Upload to PyPI
-    needs: [test]
+    needs: [test-whl, test-repo]
     runs-on: ubuntu-latest
 
     steps:
