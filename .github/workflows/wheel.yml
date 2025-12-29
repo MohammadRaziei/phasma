@@ -107,7 +107,7 @@ jobs:
 
       - name: Install test dependencies
         run: |
-          pip install pytest-cov pytest-xdist
+          pip install pytest-cov pytest-xdist pytest-asyncio
 
       - name: Run tests
         run: |
