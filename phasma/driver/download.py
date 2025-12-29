@@ -125,8 +125,9 @@ def download_and_extract(
     try:
         os.rename(extract_path, dest)
     except OSError as e:
-        logger.error(str(e))
-        logger.error("list of files at %s:\n%s", extract_dir, str(os.listdir(extract_dir))) 
+        msg = f"{str(e)}\nlist of files at {extract_dir}:\n{os.listdir(extract_dir)}"
+        logger.error(msg)
+        raise OSError(msg)
 
     os.remove(archive)
 
