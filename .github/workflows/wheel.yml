@@ -99,7 +99,8 @@ jobs:
 
       - name: Run tests
         run: |
-          python -m pytest tests/ -v --cov 
+          python -m phasma driver download 
+          python -m pytest tests/ -v --cov -n 4
     
   test-whl:
     needs: [build_wheels]
