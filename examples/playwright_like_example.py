@@ -6,21 +6,14 @@ import asyncio
 import tempfile
 from pathlib import Path
 
-from phasma import launch, download_driver
+import phasma
 
 
 async def main():
-    # First, ensure the PhantomJS driver is downloaded
-    print("Downloading PhantomJS driver if needed...")
-    success = download_driver()
-    if not success:
-        print("Failed to download PhantomJS driver")
-        return
-    
-    print("Driver download complete. Launching browser...")
-    
-    # Launch a new browser instance (this will automatically download PhantomJS if needed)
-    browser = await launch()
+    print("Launching browser with pre-bundled PhantomJS engine...")
+
+    # Launch a new browser instance (uses pre-bundled PhantomJS engine)
+    browser = await phasma.launch()
     
     try:
         # Create a new page

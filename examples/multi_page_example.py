@@ -4,15 +4,13 @@ Example showing how to use multiple pages and contexts with the Playwright-like 
 import asyncio
 from pathlib import Path
 
-from phasma import launch, download_driver
+import phasma
 
 
 async def multi_page_example():
     """Example of using multiple pages and contexts."""
-    # Ensure PhantomJS driver is available
-    download_driver()
-    
-    browser = await launch()
+
+    browser = await phasma.launch()
     
     try:
         # Create a new context

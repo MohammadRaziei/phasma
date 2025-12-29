@@ -4,7 +4,7 @@
 <img src="https://github.com/MohammadRaziei/phasma/raw/master/docs/images/phasma.jpg" width="30%" style="min-width: 200px;" alt="Phasma Logo" />
 </div>
 
-**Phasma** is a modern Python library that provides a Playwright-like API for PhantomJS browser automation. Unlike other tools, Phasma requires **no external dependencies** - no need to install browsers, Node.js, npm, or browser drivers like Chrome or Firefox. It includes a bundled PhantomJS engine and provides a familiar Playwright-like interface, making it ideal for executing JavaScript that manipulates the DOM, web scraping, automated testing, screenshot capture, and PDF generation.
+**Phasma** is a modern Python library that provides a Playwright-like API for PhantomJS browser automation. Unlike other tools, Phasma requires **no external dependencies** - no need to install browsers, Node.js, npm, or browser drivers like Chrome or Firefox. It includes a pre-bundled PhantomJS engine and provides a familiar Playwright-like interface, making it ideal for executing JavaScript that manipulates the DOM, web scraping, automated testing, screenshot capture, and PDF generation.
 
 ## Key Features
 
@@ -21,7 +21,7 @@
 
 ### 🛠️ Zero Setup Required
 - **No External Dependencies**: No need to install browsers, Node.js, npm, or browser drivers
-- **Bundled PhantomJS**: Complete PhantomJS engine included (~20MB) - works across all platforms
+- **Bundled PhantomJS**: Complete PhantomJS engine pre-included (~20MB) - works across all platforms
 - **Self-Contained**: OS-independent with embedded binaries, no additional setup needed
 - **CLI Interface**: Command-line tools for quick operations
 
@@ -36,7 +36,7 @@ pip install phasma
 ### System Requirements
 - **Python**: 3.4 or higher
 - **OS**: Windows, Linux, or macOS (32-bit and 64-bit supported)
-- **Storage**: ~20MB for bundled PhantomJS engine (included in package)
+- **Storage**: ~20MB for pre-bundled PhantomJS engine (included in package)
 
 Phasma is completely self-contained with no external dependencies - no need to install browsers, Node.js, npm, or browser drivers.
 

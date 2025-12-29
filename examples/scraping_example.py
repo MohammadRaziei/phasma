@@ -5,15 +5,13 @@ import asyncio
 import tempfile
 from pathlib import Path
 
-from phasma import launch, download_driver
+import phasma
 
 
 async def scrape_example():
     """Example of scraping data from a webpage."""
-    # Ensure PhantomJS driver is available
-    download_driver()
-    
-    browser = await launch()
+
+    browser = await phasma.launch()
     
     try:
         page = await browser.new_page()

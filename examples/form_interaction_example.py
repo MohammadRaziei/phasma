@@ -5,7 +5,7 @@ import asyncio
 import tempfile
 from pathlib import Path
 
-from phasma import launch, download_driver
+import phasma
 
 
 async def form_interaction_example():
@@ -56,10 +56,8 @@ async def form_interaction_example():
         form_path = f.name
     
     try:
-        # Ensure PhantomJS driver is available
-        download_driver()
-        
-        browser = await launch()
+
+        browser = await phasma.launch()
         
         try:
             page = await browser.new_page()

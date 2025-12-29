@@ -2,7 +2,7 @@ import asyncio
 import pytest
 import tempfile
 from pathlib import Path
-from phasma import download_driver, launch
+import phasma
 
 
 class TestPhasma:
@@ -11,13 +11,13 @@ class TestPhasma:
     def test_download_driver(self):
         """Test download_driver function."""
         # This test may download the driver if not present; we just ensure no exception
-        result = download_driver()
+        result = phasma.download_driver()
         assert isinstance(result, bool)
 
     @pytest.mark.asyncio
     async def test_page_navigation(self):
         """Test page navigation functionality."""
-        browser = await launch()
+        browser = await phasma.launch()
         try:
             page = await browser.new_page()
 
@@ -40,7 +40,7 @@ class TestPhasma:
     @pytest.mark.asyncio
     async def test_page_content_extraction(self):
         """Test extracting content from pages."""
-        browser = await launch()
+        browser = await phasma.launch()
         try:
             page = await browser.new_page()
 
@@ -63,7 +63,7 @@ class TestPhasma:
     @pytest.mark.asyncio
     async def test_screenshot_generation(self):
         """Test screenshot generation."""
-        browser = await launch()
+        browser = await phasma.launch()
         try:
             page = await browser.new_page()
 
@@ -89,7 +89,7 @@ class TestPhasma:
     @pytest.mark.asyncio
     async def test_pdf_generation(self):
         """Test PDF generation."""
-        browser = await launch()
+        browser = await phasma.launch()
         try:
             page = await browser.new_page()
 
@@ -115,7 +115,7 @@ class TestPhasma:
     @pytest.mark.asyncio
     async def test_element_interaction(self):
         """Test element interaction methods."""
-        browser = await launch()
+        browser = await phasma.launch()
         try:
             page = await browser.new_page()
 
