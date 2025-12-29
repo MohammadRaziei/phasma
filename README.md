@@ -37,7 +37,7 @@ pip install -e .
 
 ## Quick Start
 
-### Using the Python API
+### Using the Legacy Python API
 
 ```python
 from phasma import render_page, render_url, execjs
@@ -54,6 +54,47 @@ print(content[:500])  # first 500 characters
 # Execute JavaScript
 output = execjs("console.log('Hello from PhantomJS');")
 print(output)
+```
+
+### Using the New Playwright-like API
+
+Phasma now includes a Playwright-like API that provides a modern, async interface similar to Playwright:
+
+```python
+import asyncio
+from phasma import launch
+
+async def main():
+    # Launch a browser instance (PhantomJS)
+    browser = await launch()
+
+    try:
+        # Create a new page
+        page = await browser.new_page()
+
+        # Navigate to a URL
+        await page.goto("https://example.com")
+
+        # Get text content of elements
+        title = await page.text_content("h1")
+        print(f"Main title: {title}")
+
+        # Execute JavaScript
+        page_title = await page.evaluate("document.title")
+        print(f"Page title: {page_title}")
+
+        # Take screenshots
+        await page.screenshot(path="screenshot.png")
+
+        # Generate PDFs
+        await page.pdf(path="page.pdf")
+
+    finally:
+        # Close the browser
+        await browser.close()
+
+# Run the async function
+asyncio.run(main())
 ```
 
 ### Using the Command Line
