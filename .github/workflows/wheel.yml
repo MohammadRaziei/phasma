@@ -126,33 +126,65 @@ jobs:
           ls dist
           pip install --no-index --upgrade --find-links ./dist/ phasma
 
-      - name: check site package
+      - name: List site-packages recursively (pure Python, no env assumptions)
         run: |
-          SITE_PKG=$(python -c "
-          import site, sys, os
+          python -c "
+          import site, sys, os, stat
+          from pathlib import Path
+
+          # Get site-packages paths using getattr fallback:
+          # - Prefer site.getsitepackages() if available (standard)
+          # - Fallback: scan sys.path for directories containing 'site-packages' in the path
           paths = getattr(site, 'getsitepackages', lambda: [p for p in sys.path if 'site-packages' in p and os.path.isdir(p)])()
-          print(paths[0] if paths else '')
-          ")
 
-          if [[ -z "$SITE_PKG" || ! -d "$SITE_PKG" ]]; then
-              echo "Error: Could not determine site-packages directory." >&2
-              exit 1
-          fi
+          if not paths:
+              print('❌ No site-packages directory found.', file=sys.stderr)
+              sys.exit(1)
 
-          if [[ -z "$SITE_PKG" || ! -d "$SITE_PKG" ]]; then
-              echo "Error: Could not determine site-packages directory." >&2
-              exit 1
-          fi
+          site_pkg = Path(paths[0]).resolve()
+          if not site_pkg.is_dir():
+              print(f'❌ Path is not a directory: {site_pkg}', file=sys.stderr)
+              sys.exit(1)
 
-          PHANTOMJS_BIN = "${SITE_PKG}/phasma/driver/phantomjs/bin"
-          if [[ -z "$PHANTOMJS_BIN" || ! -d "$PHANTOMJS_BIN" ]]; then
-              echo "Error: Could not determine phantomjs/bin directory." >&2
-              exit 1
-          fi
+          print(f'✅ site-packages: {site_pkg}')
 
-          echo "Listing: $SITE_PKG"
-          ls -lhR "$SITE_PKG"
-        shell: bash
+          phantomjs_bin = site_pkg / 'phasma' / 'driver' / 'phantomjs' / 'bin'
+          status = '✓ exists' if phantomjs_bin.is_dir() else '✗ NOT FOUND'
+          print(f'🔍 phasma/driver/phantomjs/bin: {phantomjs_bin} ({status})\\n')
+
+          # Human-readable recursive listing (emulates `ls -lhR`)
+          def fmt_size(s):
+              if s == 0: return '   - '
+              for unit in 'BKMGT':
+                  if s < 1024:
+                      return f'{int(s)}B' if unit == 'B' else f'{s:.1f}{unit}'
+                  s /= 1024
+              return f'{s:.1f}T'
+
+          # Walk and print directory tree
+          for root, dirs, files in os.walk(site_pkg):
+              root_path = Path(root)
+              print(f'{root_path}:')
+              # Sort: directories first, then files; case-insensitive
+              entries = sorted([root_path/d for d in dirs] + [root_path/f for f in files],
+                              key=lambda x: (not x.is_dir(), x.name.lower()))
+              for entry in entries:
+                  try:
+                      st = entry.stat()
+                      perms = stat.filemode(st.st_mode)  # e.g., '-rwxr-xr-x'
+                      size_str = '   <DIR>' if entry.is_dir() else fmt_size(st.st_size)
+                      print(f'{perms} {size_str:>6}  {entry.name}')
+                  except OSError as e:
+                      print(f'?  ???  {entry.name}  [ERR: {e}]')
+              print()
+
+          # Fail if required phantomjs/bin directory is missing
+          if not phantomjs_bin.is_dir():
+              print('❌ Required phantomjs/bin directory is missing.', file=sys.stderr)
+              sys.exit(1)
+
+          print('✅ Success: site-packages listed and phantomjs/bin verified.')
+          "
 
 
 
