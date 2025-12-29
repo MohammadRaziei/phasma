@@ -78,7 +78,7 @@ jobs:
           overwrite: false
   
     
-  test-whl:
+  test:
     needs: [build_wheels]
     strategy:
       matrix:
@@ -157,7 +157,7 @@ jobs:
 
   release:
     name: Release Assets and Upload to PyPI
-    needs: [test-whl, test-repo]
+    needs: [test]
     runs-on: ubuntu-latest
 
     steps:
