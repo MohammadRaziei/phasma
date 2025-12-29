@@ -99,7 +99,6 @@ jobs:
 
       - name: Run tests
         run: |
-          python -m driver download
           python -m pytest tests/ -v --cov 
     
   test-whl:
