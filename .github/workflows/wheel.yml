@@ -129,21 +129,18 @@ jobs:
       - name: List site-packages recursively 
         run: |
           python -c "
-          import os, stat, site, sys
-          def get_sp():
-              c = getattr(site, 'getsitepackages', lambda: [])()
-              if not c: c = [p for p in sys.path if 'site-packages' in p and os.path.isdir(p)]
-              for p in c:
-                  if os.path.isdir(p): return os.path.abspath(p)
-              return None
-          sp = get_sp()
-          if not sp or not os.path.isdir(sp):
-              print('Error: Could not determine site-packages directory.', file=sys.stderr)
+          import os, stat, sys
+          try:
+              import phasma
+          except ImportError:
+              print('Error: phasma package not installed.', file=sys.stderr)
               sys.exit(1)
-          pb = os.path.join(sp, 'phasma', 'driver', 'phantomjs', 'bin')
+          phasma_root = os.path.dirname(os.path.abspath(phasma.__file__))
+          pb = os.path.join(phasma_root, 'driver', 'phantomjs', 'bin')
           if not os.path.isdir(pb):
               print(f'Error: PhantomJS binary directory not found at: {pb}', file=sys.stderr)
               sys.exit(1)
+          sp = os.path.dirname(phasma_root)
           print(f'# site-packages: {sp}'); print(f'# PhantomJS bin dir: {pb}\\n')
           for r, ds, fs in os.walk(sp):
               print(r + ':')
@@ -151,8 +148,8 @@ jobs:
                   p = os.path.join(r, n)
                   try:
                       s = os.lstat(p)
-                      m = stat.filemode(s.st_mode)
-                      if stat.S_ISDIR(s.st_mode):
+                      m = stat.filemode(s.st_mode) if hasattr(stat, 'filemode') else oct(s.st_mode & 0o777)
+                      if os.path.isdir(p):
                           z = '   <DIR>'
                       else:
                           sz = s.st_size
@@ -168,7 +165,6 @@ jobs:
                       print(f'? ------- ? {n}')
               print()
           "
-
 
 
   release:
