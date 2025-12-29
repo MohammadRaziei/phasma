@@ -138,9 +138,6 @@ jobs:
               exit 1
           fi
 
-          echo "Listing: $SITE_PKG"
-          ls -lhR "$SITE_PKG"
-
           if [[ -z "$SITE_PKG" || ! -d "$SITE_PKG" ]]; then
               echo "Error: Could not determine site-packages directory." >&2
               exit 1
@@ -151,6 +148,9 @@ jobs:
               echo "Error: Could not determine phantomjs/bin directory." >&2
               exit 1
           fi
+
+          echo "Listing: $SITE_PKG"
+          ls -lhR "$SITE_PKG"
         shell: bash
 
 
