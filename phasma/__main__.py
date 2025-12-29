@@ -8,7 +8,8 @@ import argparse
 import asyncio
 from pathlib import Path
 
-from phasma import download_driver, render_page, render_url, execjs, launch
+from phasma.browser import launch, download_driver
+from phasma.phasma import render_page, render_url, execjs
 from phasma.driver import Driver
 
 

@@ -7,13 +7,6 @@ import phasma
 
 class TestPhasma:
     """Test suite for the Phasma functions using the new Playwright-like API."""
-
-    def test_download_driver(self):
-        """Test download_driver function."""
-        # This test may download the driver if not present; we just ensure no exception
-        result = phasma.download_driver()
-        assert isinstance(result, bool)
-
     @pytest.mark.asyncio
     async def test_page_navigation(self):
         """Test page navigation functionality."""

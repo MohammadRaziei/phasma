@@ -7,16 +7,14 @@ from pathlib import Path
 
 import pytest
 
-from phasma import launch, download_driver
+import phasma 
 
 
 @pytest.mark.asyncio
 async def test_basic_browser_launch():
     """Test basic browser launch and page creation."""
-    # Ensure PhantomJS driver is available
-    download_driver()
-    
-    browser = await launch()
+    # Ensure PhantomJS driver is available    
+    browser = await phasma.launch()
     page = await browser.new_page()
     
     # Test that we can navigate to a simple URL
@@ -59,9 +57,8 @@ async def test_basic_browser_launch():
 @pytest.mark.asyncio
 async def test_screenshot():
     """Test screenshot functionality."""
-    download_driver()
     
-    browser = await launch()
+    browser = await phasma.launch()
     page = await browser.new_page()
     
     # Create a simple HTML page for screenshot
@@ -106,10 +103,8 @@ async def test_screenshot():
 
 @pytest.mark.asyncio
 async def test_pdf_generation():
-    """Test PDF generation functionality."""
-    download_driver()
-    
-    browser = await launch()
+    """Test PDF generation functionality."""    
+    browser = await phasma.launch()
     page = await browser.new_page()
     
     # Create a simple HTML page for PDF
@@ -154,10 +149,8 @@ async def test_pdf_generation():
 
 @pytest.mark.asyncio
 async def test_element_interaction():
-    """Test element interaction methods."""
-    download_driver()
-    
-    browser = await launch()
+    """Test element interaction methods."""    
+    browser = await phasma.launch()
     page = await browser.new_page()
     
     # Create HTML with an input field and button

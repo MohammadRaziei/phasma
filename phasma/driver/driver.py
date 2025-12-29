@@ -127,3 +127,18 @@ class Driver:
         """Alias for exec."""
         return self.exec(*args, **kwargs)
 
+
+
+def download_driver(os_name: str | None = None, arch: str | None = None, force: bool = False) -> bool:
+    """
+    Download the PhantomJS driver.
+
+    Args:
+        os_name: Operating system name (e.g., 'windows', 'linux', 'darwin').
+        arch: Architecture ('32bit' or '64bit').
+        force: Whether to force re-download even if driver exists.
+
+    Returns:
+        bool: True if download successful.
+    """
+    return Driver.download(os_name=os_name, arch=arch, force=force)

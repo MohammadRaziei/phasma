@@ -95,8 +95,6 @@ def test_legacy_api_functions():
 @pytest.mark.asyncio
 async def test_error_handling():
     """Test error handling in the new API."""
-    phasma.download_driver()
-
     browser = await phasma.launch()
     try:
         page = await browser.new_page()
