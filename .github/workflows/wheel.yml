@@ -124,6 +124,7 @@ jobs:
 
           echo "Listing: $SITE_PKG"
           ls -lhR "$SITE_PKG"
+        shell: bash
 
       - name: Run tests
         run: |
