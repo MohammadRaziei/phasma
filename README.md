@@ -4,7 +4,7 @@
 <img src="https://github.com/MohammadRaziei/phasma/raw/master/docs/images/phasma.jpg" width="30%" style="min-width: 200px;" alt="Phasma Logo" />
 </div>
 
-**Phasma** is a modern Python library that provides a Playwright-like API for PhantomJS browser automation. It combines the power of PhantomJS with a familiar, intuitive interface similar to Playwright, making it ideal for web scraping, automated testing, screenshot capture, and PDF generation.
+**Phasma** is a modern Python library that provides a Playwright-like API for PhantomJS browser automation. Unlike other tools, Phasma requires **no external dependencies** - no need to install browsers, Node.js, npm, or browser drivers like Chrome or Firefox. It includes a bundled PhantomJS engine and provides a familiar Playwright-like interface, making it ideal for web scraping, automated testing, screenshot capture, and PDF generation.
 
 ## Key Features
 
@@ -25,13 +25,17 @@
 - **High Quality**: Full control over viewport size, quality, and formatting
 
 ### 🛠️ Developer Experience
-- **Automatic Driver Management**: PhantomJS driver downloaded and managed automatically
+- **No External Dependencies**: No need to install browsers, Node.js, npm, or browser drivers
+- **Bundled PhantomJS**: Complete PhantomJS engine included in the package
+- **Automatic Driver Management**: Driver downloaded and managed automatically
 - **Cross-Platform**: Works seamlessly on Windows, Linux, and macOS
 - **Zero Configuration**: No setup required - just install and use
 - **CLI Interface**: Command-line tools for quick operations
 
 ### 📋 Technical Specifications
 - **Python 3.4+**: Compatible with modern Python versions
+- **No External Dependencies**: No need for browsers, Node.js, npm, or browser drivers
+- **Self-Contained**: Bundled PhantomJS engine included
 - **Lightweight**: Minimal dependencies and fast installation
 - **Reliable**: Comprehensive test suite and error handling
 - **Secure**: SSL control and environment isolation options
@@ -47,10 +51,11 @@ pip install phasma
 ### System Requirements
 - **Python**: 3.4 or higher
 - **OS**: Windows, Linux, or macOS (32-bit and 64-bit supported)
+- **No External Dependencies**: No need to install browsers, Node.js, npm, or browser drivers
 - **Memory**: Minimal memory footprint
-- **Storage**: ~50MB for PhantomJS driver (downloaded automatically)
+- **Storage**: ~50MB for bundled PhantomJS engine (downloaded automatically)
 
-The package includes the PhantomJS driver for all supported platforms. No separate download is required - the driver is automatically downloaded and managed when needed.
+Phasma is completely self-contained - it includes the PhantomJS engine and requires no external dependencies. No need to install Chrome, Firefox, Node.js, npm, or any browser drivers. The bundled PhantomJS engine is automatically downloaded and managed when needed.
 
 ### From Source
 For development or latest features:
