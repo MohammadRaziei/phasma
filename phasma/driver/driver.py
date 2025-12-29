@@ -7,9 +7,10 @@ from pathlib import Path
 from typing import List, Optional, Sequence, Union
 
 
-from .download import DRIVER_PATH, DRIVER_VERSION, download_driver
+from . import download
 
-PHASMA_PATH = DRIVER_PATH / "phantomjs"
+
+PHASMA_PATH = download.DRIVER_PATH / "phantomjs"
 
 
 class Driver:
@@ -23,7 +24,7 @@ class Driver:
 
     @staticmethod
     def download(os_name: str | None = None, arch: str | None = None, force: bool = False):
-        return download_driver(dest=DRIVER_PATH, os_name=os_name, arch=arch, force=force)
+        return download_driver(dest=download.DRIVER_PATH, os_name=os_name, arch=arch, force=force)
 
     def __init__(self):
         # Determine the correct executable name based on the OS
@@ -66,7 +67,7 @@ class Driver:
 
     @property
     def version(self) -> str:
-        return DRIVER_VERSION
+        return download.DRIVER_VERSION
 
     def exec(
         self,
