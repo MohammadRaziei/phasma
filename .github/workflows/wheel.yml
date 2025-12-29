@@ -126,64 +126,47 @@ jobs:
           ls dist
           pip install --no-index --upgrade --find-links ./dist/ phasma
 
-      - name: List site-packages recursively (pure Python, no env assumptions)
+      - name: List site-packages recursively 
         run: |
           python -c "
-          import site, sys, os, stat
-          from pathlib import Path
-
-          # Get site-packages paths using getattr fallback:
-          # - Prefer site.getsitepackages() if available (standard)
-          # - Fallback: scan sys.path for directories containing 'site-packages' in the path
-          paths = getattr(site, 'getsitepackages', lambda: [p for p in sys.path if 'site-packages' in p and os.path.isdir(p)])()
-
-          if not paths:
-              print('❌ No site-packages directory found.', file=sys.stderr)
+          import os, stat, site, sys
+          def get_sp():
+              c = getattr(site, 'getsitepackages', lambda: [])()
+              if not c: c = [p for p in sys.path if 'site-packages' in p and os.path.isdir(p)]
+              for p in c:
+                  if os.path.isdir(p): return os.path.abspath(p)
+              return None
+          sp = get_sp()
+          if not sp or not os.path.isdir(sp):
+              print('Error: Could not determine site-packages directory.', file=sys.stderr)
               sys.exit(1)
-
-          site_pkg = Path(paths[0]).resolve()
-          if not site_pkg.is_dir():
-              print(f'❌ Path is not a directory: {site_pkg}', file=sys.stderr)
+          pb = os.path.join(sp, 'phasma', 'driver', 'phantomjs', 'bin')
+          if not os.path.isdir(pb):
+              print(f'Error: PhantomJS binary directory not found at: {pb}', file=sys.stderr)
               sys.exit(1)
-
-          print(f'✅ site-packages: {site_pkg}')
-
-          phantomjs_bin = site_pkg / 'phasma' / 'driver' / 'phantomjs' / 'bin'
-          status = '✓ exists' if phantomjs_bin.is_dir() else '✗ NOT FOUND'
-          print(f'🔍 phasma/driver/phantomjs/bin: {phantomjs_bin} ({status})\\n')
-
-          # Human-readable recursive listing (emulates `ls -lhR`)
-          def fmt_size(s):
-              if s == 0: return '   - '
-              for unit in 'BKMGT':
-                  if s < 1024:
-                      return f'{int(s)}B' if unit == 'B' else f'{s:.1f}{unit}'
-                  s /= 1024
-              return f'{s:.1f}T'
-
-          # Walk and print directory tree
-          for root, dirs, files in os.walk(site_pkg):
-              root_path = Path(root)
-              print(f'{root_path}:')
-              # Sort: directories first, then files; case-insensitive
-              entries = sorted([root_path/d for d in dirs] + [root_path/f for f in files],
-                              key=lambda x: (not x.is_dir(), x.name.lower()))
-              for entry in entries:
+          print(f'# site-packages: {sp}'); print(f'# PhantomJS bin dir: {pb}\\n')
+          for r, ds, fs in os.walk(sp):
+              print(r + ':')
+              for n in sorted(ds + fs):
+                  p = os.path.join(r, n)
                   try:
-                      st = entry.stat()
-                      perms = stat.filemode(st.st_mode)  # e.g., '-rwxr-xr-x'
-                      size_str = '   <DIR>' if entry.is_dir() else fmt_size(st.st_size)
-                      print(f'{perms} {size_str:>6}  {entry.name}')
-                  except OSError as e:
-                      print(f'?  ???  {entry.name}  [ERR: {e}]')
+                      s = os.lstat(p)
+                      m = stat.filemode(s.st_mode)
+                      if stat.S_ISDIR(s.st_mode):
+                          z = '   <DIR>'
+                      else:
+                          sz = s.st_size
+                          for u in ['', 'K', 'M', 'G']:
+                              if sz < 1024:
+                                  z = f'{int(sz)}' if u == '' else f'{sz:.0f}{u}'
+                                  break
+                              sz /= 1024.0
+                          else:
+                              z = f'{sz:.1f}T'
+                      print(f'{m} {z:>6} {n}')
+                  except OSError:
+                      print(f'? ------- ? {n}')
               print()
-
-          # Fail if required phantomjs/bin directory is missing
-          if not phantomjs_bin.is_dir():
-              print('❌ Required phantomjs/bin directory is missing.', file=sys.stderr)
-              sys.exit(1)
-
-          print('✅ Success: site-packages listed and phantomjs/bin verified.')
           "
 
 
