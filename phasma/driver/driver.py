@@ -34,9 +34,9 @@ class Driver:
         self._bin_path = PHASMA_PATH / "bin" / self.exe_name
 
         # If the binary doesn't exist, download and set it up
-        if not self._bin_path.is_file():
+        # if not self._bin_path.is_file():
             # Download the driver to the root directory first
-            self.download()
+            # self.download()
 
         self.get_exe_access()
 
