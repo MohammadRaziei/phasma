@@ -103,11 +103,11 @@ async def render_url_content(url, output_path=None, viewport="1024x768", wait=0)
 async def execute_js_script(script, url="about:blank"):
     """
     Execute JavaScript code in a PhantomJS context.
-    
+
     Args:
-        script: JavaScript code to execute
+        script: JavaScript code to execute (without 'return' keyword)
         url: URL to load before executing script (default: about:blank)
-    
+
     Returns:
         Result of the JavaScript execution
     """

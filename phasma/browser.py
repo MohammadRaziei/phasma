@@ -15,6 +15,8 @@ from .driver import Driver
 
 def _escape_js_string(s):
     """Escape a string for safe insertion into JavaScript code."""
+    if s is None:
+        return "null"  # Return JavaScript null literal for None values
     if isinstance(s, Path):
         s = str(s)
     # Escape backslashes, single quotes, double quotes, and newlines
@@ -511,7 +513,7 @@ class Page:
             if (status === 'success') {{
                 window.setTimeout(function() {{
                     var result = page.evaluate(function() {{
-                        {expression}
+                        return {expression};
                     }});
                     console.log(JSON.stringify(result));
                     phantom.exit();
