@@ -1,137 +1,266 @@
-# Phasma – Modern PhantomJS Driver for Python
+# Phasma – Modern PhantomJS Browser Automation for Python
 
 <div align="center">
 <img src="https://github.com/MohammadRaziei/phasma/raw/master/docs/images/phasma.jpg" width="30%" style="min-width: 200px;" alt="Phasma Logo" />
 </div>
 
-**Phasma** is a Python library that provides a clean, high‑level interface to PhantomJS, enabling headless browser automation, web page rendering, and JavaScript execution. It simplifies the process of downloading, managing, and interacting with PhantomJS, making it ideal for web scraping, screenshot capture, and automated testing.
+**Phasma** is a modern Python library that provides a Playwright-like API for PhantomJS browser automation. It combines the power of PhantomJS with a familiar, intuitive interface similar to Playwright, making it ideal for web scraping, automated testing, screenshot capture, and PDF generation.
 
-## Features
+## Key Features
 
-- **Bundled Driver**: PhantomJS driver is included in the package (Windows, macOS, Linux). No separate download needed.
-- **Page Rendering**: Render HTML files, strings, and remote URLs with JavaScript support.
-- **JavaScript Execution**: Run arbitrary JavaScript code in a PhantomJS context.
-- **Direct PhantomJS Execution**: Execute PhantomJS with full control over arguments, environment, and working directory.
-- **SSL Control**: Disable SSL verification by setting `OPENSSL_CONF` environment variable.
-- **CLI Interface**: Command‑line tools for quick operations.
-- **Cross‑Platform**: Works on Windows, Linux, and macOS.
-- **Lightweight**: Minimal dependencies, focused on simplicity and reliability.
+### 🚀 Playwright-like API
+- **Familiar Interface**: Uses the same patterns as Playwright (`launch`, `Browser`, `Page`, `ElementHandle`)
+- **Async Support**: Full async/await support for efficient concurrent operations
+- **Modern Design**: Clean, intuitive API that follows current best practices
+
+### 🌐 Browser Automation
+- **Page Navigation**: Navigate to URLs with `page.goto()`
+- **Element Interaction**: Click, fill, and interact with page elements
+- **JavaScript Execution**: Run JavaScript in the page context
+- **Content Extraction**: Extract text, HTML, and other content from pages
+
+### 📸 Media Generation
+- **Screenshots**: Capture page screenshots in PNG, JPG, and other formats
+- **PDF Generation**: Generate PDFs with customizable formatting options
+- **High Quality**: Full control over viewport size, quality, and formatting
+
+### 🛠️ Developer Experience
+- **Automatic Driver Management**: PhantomJS driver downloaded and managed automatically
+- **Cross-Platform**: Works seamlessly on Windows, Linux, and macOS
+- **Zero Configuration**: No setup required - just install and use
+- **CLI Interface**: Command-line tools for quick operations
+
+### 📋 Technical Specifications
+- **Python 3.4+**: Compatible with modern Python versions
+- **Lightweight**: Minimal dependencies and fast installation
+- **Reliable**: Comprehensive test suite and error handling
+- **Secure**: SSL control and environment isolation options
 
 ## Installation
 
-Install from PyPI:
+Install the latest version from PyPI:
 
 ```bash
 pip install phasma
 ```
 
-The package includes the PhantomJS driver for Windows, macOS, and Linux (both 32‑bit and 64‑bit). No separate download is required.
+### System Requirements
+- **Python**: 3.4 or higher
+- **OS**: Windows, Linux, or macOS (32-bit and 64-bit supported)
+- **Memory**: Minimal memory footprint
+- **Storage**: ~50MB for PhantomJS driver (downloaded automatically)
 
-Or install from source:
+The package includes the PhantomJS driver for all supported platforms. No separate download is required - the driver is automatically downloaded and managed when needed.
+
+### From Source
+For development or latest features:
 
 ```bash
-git clone https://github.com/MohammadRaziei/phantomjs-driver.git
-cd phantomjs-driver
+git clone https://github.com/MohammadRaziei/phasma.git
+cd phasma
 pip install -e .
 ```
 
 ## Quick Start
 
-### Using the Playwright-like API
+Getting started with Phasma is simple. The library provides a Playwright-like API that's familiar to modern web automation developers.
 
-Phasma provides a modern, async interface similar to Playwright:
+### Basic Browser Automation
 
 ```python
 import asyncio
 from phasma import launch
 
 async def main():
-    # Download and launch a browser instance (PhantomJS)
-    # The driver will be downloaded automatically if not present
+    # Launch a browser instance (PhantomJS driver auto-downloaded)
     browser = await launch()
 
     try:
         # Create a new page
         page = await browser.new_page()
 
-        # Navigate to a URL
+        # Navigate to a website
         await page.goto("https://example.com")
 
-        # Get text content of elements
+        # Extract content from the page
         title = await page.text_content("h1")
-        print(f"Main title: {title}")
+        print(f"Main heading: {title}")
 
-        # Execute JavaScript
+        # Execute JavaScript in the page context
         page_title = await page.evaluate("document.title")
         print(f"Page title: {page_title}")
 
-        # Take screenshots
-        await page.screenshot(path="screenshot.png")
+        # Take a screenshot
+        await page.screenshot(path="example.png")
 
-        # Generate PDFs
-        await page.pdf(path="page.pdf")
+        # Generate a PDF
+        await page.pdf(path="example.pdf")
 
     finally:
-        # Close the browser
+        # Always close the browser to free resources
         await browser.close()
 
 # Run the async function
 asyncio.run(main())
 ```
 
-### Using the Command Line
+### Advanced Usage Example
+
+```python
+import asyncio
+from phasma import launch
+
+async def advanced_example():
+    browser = await launch()
+
+    try:
+        page = await browser.new_page()
+
+        # Set custom viewport size
+        await page.set_viewport_size(1920, 1080)
+
+        # Navigate and wait for content
+        await page.goto("https://example.com")
+
+        # Wait for specific elements
+        await page.wait_for_selector("h1", timeout=5000)
+
+        # Interact with elements
+        heading = await page.text_content("h1")
+        print(f"Found heading: {heading}")
+
+        # Take a high-quality screenshot
+        await page.screenshot(
+            path="full_page.png",
+            type="png",
+            quality=100
+        )
+
+        # Generate a customized PDF
+        await page.pdf(
+            path="document.pdf",
+            format="A4",
+            landscape=False,
+            margin="1cm"
+        )
+
+    finally:
+        await browser.close()
+
+asyncio.run(advanced_example())
+```
+
+### Command Line Interface
+
+Phasma also provides a powerful command-line interface for quick operations:
 
 ```bash
-# Show driver version
-python -m phasma driver --version
+# Show PhantomJS driver information
+python -m phasma driver --version    # Display driver version
+python -m phasma driver --path       # Show driver executable path
 
-# Show driver executable path
-python -m phasma driver --path
+# Download and manage the driver
+python -m phasma driver download                    # Download driver
+python -m phasma driver download --force           # Force re-download
 
-# Download the driver (use --force to re-download)
-python -m phasma driver download
-python -m phasma driver download --force
-
-# Execute PhantomJS directly with arguments
+# Execute PhantomJS directly with custom arguments
 python -m phasma driver exec script.js
-python -m phasma driver exec --cwd /path/to/working/dir script.js
+python -m phasma driver exec --cwd /path/to/dir script.js
 python -m phasma driver exec --ssl --timeout 10 script.js
 python -m phasma driver exec --no-ssl --capture-output script.js
 
-# Render an HTML file
-python -m phasma render-page tests/data/test_page.html
+# Render HTML content
+python -m phasma render-page /path/to/file.html
+python -m phasma render-page "<html><body>Hello</body></html>"
+python -m phasma render-page file.html --output output.html --viewport 1920x1080 --wait 1000
 
-# Render a URL
-python -m phasma render-url https://example.com --wait 2000
+# Render URLs
+python -m phasma render-url https://example.com
+python -m phasma render-url https://example.com --output page.html --wait 2000
 
 # Execute JavaScript
-python -m phasma execjs "console.log('Hello');"
+python -m phasma execjs "console.log('Hello from PhantomJS');"
+python -m phasma execjs "document.title" --arg value1 --arg value2
 ```
 
 ## API Reference
 
-### `download_driver(os_name=None, arch=None, force=False)`
-Downloads the PhantomJS driver for the given OS and architecture. If no arguments are provided, it auto‑detects the current platform. Set `force=True` to re‑download even if the driver already exists.
+### Core Functions
 
-### `Driver.exec(args, *, capture_output=False, timeout=30, check=False, ssl=False, env=None, cwd=None, **kwargs)`
-Executes PhantomJS with the given arguments. Returns a `subprocess.CompletedProcess` instance.
+#### `launch(options=None)`
+Launches a new browser instance with automatic driver management.
 
-- `args`: Command line arguments as a string or sequence of strings.
-- `capture_output`: If `True`, capture stdout and stderr.
-- `timeout`: Timeout in seconds.
-- `check`: If `True`, raise `CalledProcessError` on non‑zero exit code.
-- `ssl`: If `False` (default), set `OPENSSL_CONF` environment variable to empty string (disables SSL verification).
-- `env`: Optional environment variables dictionary for subprocess.
-- `cwd`: Optional working directory for subprocess.
+- **Parameters**: `options` (dict, optional) - Browser launch options
+- **Returns**: `Browser` object
+- **Example**: `browser = await launch()`
 
-### `render_page(page, output=None, viewport_size="1024x768", wait_time=100, **kwargs)`
-Renders an HTML page (file path or HTML string) and returns the rendered HTML. Optionally saves the output to a file.
+#### `connect(options=None)`
+Connects to an existing browser instance (PhantomJS implementation similar to launch).
 
-### `render_url(url, output=None, viewport_size="1024x768", wait_time=0, **kwargs)`
-Renders a remote URL and returns the rendered HTML. Optionally saves the output to a file.
+- **Parameters**: `options` (dict, optional) - Connection options
+- **Returns**: `Browser` object
 
-### `execjs(script, args=None, **kwargs)`
-Executes JavaScript code in a PhantomJS context and returns the stdout.
+#### `download_driver(os_name=None, arch=None, force=False)`
+Downloads the PhantomJS driver for the specified platform.
+
+- **Parameters**:
+  - `os_name` (str, optional) - Operating system ('windows', 'linux', 'darwin')
+  - `arch` (str, optional) - Architecture ('32bit', '64bit')
+  - `force` (bool) - Force re-download if driver exists
+- **Returns**: `bool` - Success status
+
+### Browser Classes
+
+#### `Browser`
+Represents a browser instance with full lifecycle management.
+
+- **Methods**:
+  - `new_page()` → `Page`: Create a new page
+  - `new_context()` → `BrowserContext`: Create a new context
+  - `close()`: Close the browser
+  - `is_connected()` → `bool`: Check connection status
+
+#### `BrowserContext`
+Manages a browser context/session.
+
+- **Methods**:
+  - `new_page()` → `Page`: Create a new page in this context
+  - `close()`: Close the context
+
+#### `Page`
+Represents a single web page with comprehensive automation capabilities.
+
+- **Navigation**:
+  - `goto(url, wait_until="load", timeout=30000)` → `str`: Navigate to URL
+  - `set_viewport_size(width, height)`: Set viewport dimensions
+
+- **Content Extraction**:
+  - `text_content(selector)` → `str`: Get element text content
+  - `inner_html(selector)` → `str`: Get element inner HTML
+  - `evaluate(expression)` → `Any`: Execute JavaScript expression
+
+- **Element Interaction**:
+  - `click(selector)`: Click an element
+  - `fill(selector, value)`: Fill input field
+  - `wait_for_selector(selector, timeout=30000)` → `ElementHandle`: Wait for element
+
+- **Media Generation**:
+  - `screenshot(path, type="png", quality=100)` → `bytes`: Take screenshot
+  - `pdf(path, format="A4", landscape=False, margin="1cm")` → `bytes`: Generate PDF
+
+#### `ElementHandle`
+Represents a specific DOM element with interaction methods.
+
+- **Methods**:
+  - `click()`: Click the element
+  - `fill(value)`: Fill the element (if input)
+  - `text_content()` → `str`: Get text content
+  - `inner_html()` → `str`: Get inner HTML
+
+### Error Handling
+
+- `Error`: Base error class for all Phasma errors
+- `TimeoutError`: Raised when operations exceed timeout limits
 
 ## Advanced Usage
 
@@ -140,33 +269,73 @@ Executes JavaScript code in a PhantomJS context and returns the stdout.
 Phasma can render pages that modify their DOM with JavaScript:
 
 ```python
-from phasma import render_page
+import asyncio
+from phasma import launch
 
-html_with_js = """
-<html>
-<body>
-    <div id="container">Initial</div>
-    <script>
-        document.getElementById('container').innerHTML = '<h2>Generated by JS</h2>';
-    </script>
-</body>
-</html>
-"""
+async def render_dynamic_content():
+    browser = await launch()
+    try:
+        page = await browser.new_page()
 
-rendered = render_page(html_with_js, wait_time=500)
-assert "<h2>Generated by JS</h2>" in rendered
+        # Create HTML with JavaScript
+        html_with_js = '''
+        <html>
+        <body>
+            <div id="container">Initial</div>
+            <script>
+                document.getElementById('container').innerHTML = '<h2>Generated by JS</h2>';
+            </script>
+        </body>
+        </html>
+        '''
+
+        # For HTML strings, you'd need to serve them via a local file or server
+        # Here's how you'd work with a URL that has dynamic content
+        await page.goto("https://example.com")  # Replace with your URL
+
+        # Wait for dynamic content to load
+        await page.wait_for_selector("#container", timeout=5000)
+
+        # Get the updated content
+        content = await page.inner_html("#container")
+        print(content)
+
+    finally:
+        await browser.close()
+
+# Run the async function
+import asyncio
+asyncio.run(render_dynamic_content())
 ```
 
-### Custom Viewport and Wait Time
+### Custom Viewport and Screenshots
 
 ```python
-# Render with a custom viewport and longer wait
-rendered = render_page(
-    "page.html",
-    viewport_size="1920x1080",
-    wait_time=2000,
-    output="screenshot.html"
-)
+import asyncio
+from phasma import launch
+
+async def custom_viewport_example():
+    browser = await launch()
+    try:
+        page = await browser.new_page()
+
+        # Set custom viewport size
+        await page.set_viewport_size(1920, 1080)
+
+        # Navigate to a page
+        await page.goto("https://example.com")
+
+        # Take a screenshot
+        await page.screenshot(path="screenshot.png")
+
+        # Generate a PDF
+        await page.pdf(path="page.pdf", format="A4", landscape=True)
+
+    finally:
+        await browser.close()
+
+# Run the async function
+asyncio.run(custom_viewport_example())
 ```
 
 ## Testing
