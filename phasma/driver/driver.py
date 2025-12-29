@@ -24,7 +24,7 @@ class Driver:
 
     @staticmethod
     def download(os_name: str | None = None, arch: str | None = None, force: bool = False):
-        return download.download_driver(dest=download.DRIVER_PATH, os_name=os_name, arch=arch, force=force)
+        return download.download_driver(os_name=os_name, arch=arch, force=force)
 
     def __init__(self):
         # Determine the correct executable name based on the OS
