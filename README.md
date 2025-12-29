@@ -173,7 +173,6 @@ python -m phasma execjs "document.title" --arg value1 --arg value2
 
 - `launch(options=None)` → `Browser`: Launch a new browser instance
 - `connect(options=None)` → `Browser`: Connect to existing browser instance
-- `download_driver(os_name=None, arch=None, force=False)` → `bool`: Download PhantomJS driver
 
 ### Browser Classes
 

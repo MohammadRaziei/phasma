@@ -13,37 +13,49 @@ async def javascript_execution_example():
     """Example of executing JavaScript code."""
     print("Demonstrating JavaScript execution...")
     
-    # Execute JavaScript directly using the legacy API
+    # Execute JavaScript using the new Playwright-like API
     # This shows the core JavaScript execution capability
     print("\n--- Direct JavaScript execution ---")
-    
-    # Simple JavaScript execution
-    output1 = phasma.execjs("console.log('Hello from PhantomJS!');")
-    print(f"Simple output: {output1}")
-    
-    # JavaScript with calculations
-    output2 = phasma.execjs("""
-        var a = 5;
-        var b = 10;
-        var result = a + b;
-        console.log('Calculation result: ' + result);
-    """)
-    print(f"Calculation output: {output2}")
-    
-    # JavaScript that returns a value
-    output3 = phasma.execjs("""
-        var obj = {name: 'Phasma', version: 1.0, features: ['js-execution', 'dom-access']};
-        console.log(JSON.stringify(obj));
-    """)
-    print(f"Object output: {output3}")
+
+    # Launch a browser instance for JavaScript execution
+    browser = await phasma.launch()
+    try:
+        page = await browser.new_page()
+
+        # Navigate to a blank page first
+        await page.goto("about:blank")
+
+        # Simple JavaScript execution
+        output1 = await page.evaluate("console.log('Hello from PhantomJS!'); 'Execution completed';")
+        print(f"Simple output: {output1}")
+
+        # JavaScript with calculations
+        output2 = await page.evaluate("""
+            var a = 5;
+            var b = 10;
+            var result = a + b;
+            console.log('Calculation result: ' + result);
+            result;
+        """)
+        print(f"Calculation output: {output2}")
+
+        # JavaScript that returns a value
+        output3 = await page.evaluate("""
+            var obj = {name: 'Phasma', version: 1.0, features: ['js-execution', 'dom-access']};
+            JSON.stringify(obj);
+        """)
+        print(f"Object output: {output3}")
+
+    finally:
+        await browser.close()
     
     print("\n--- Browser-based JavaScript execution ---")
     
     browser = await phasma.launch()
-    
+
     try:
         page = await browser.new_page()
-        
+
         # Navigate to a page
         print("Navigating to example.com...")
         await page.goto("http://example.com")
