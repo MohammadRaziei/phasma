@@ -4,7 +4,7 @@
 <img src="https://github.com/MohammadRaziei/phasma/raw/master/docs/images/phasma.jpg" width="30%" style="min-width: 200px;" alt="Phasma Logo" />
 </div>
 
-**Phasma** is a modern Python library that provides a Playwright-like API for PhantomJS browser automation. Unlike other tools, Phasma requires **no external dependencies** - no need to install browsers, Node.js, npm, or browser drivers like Chrome or Firefox. It includes a bundled PhantomJS engine and provides a familiar Playwright-like interface, making it ideal for web scraping, automated testing, screenshot capture, and PDF generation.
+**Phasma** is a modern Python library that provides a Playwright-like API for PhantomJS browser automation. Unlike other tools, Phasma requires **no external dependencies** - no need to install browsers, Node.js, npm, or browser drivers like Chrome or Firefox. It includes a bundled PhantomJS engine and provides a familiar Playwright-like interface, making it ideal for executing JavaScript that manipulates the DOM, web scraping, automated testing, screenshot capture, and PDF generation.
 
 ## Key Features
 
@@ -404,25 +404,22 @@ The test suite covers:
 
 ## Use Cases
 
+### JavaScript & DOM Execution
+- **Execute JavaScript with DOM access**: Run JavaScript code that can interact with and manipulate the DOM
+- **Dynamic Content Rendering**: Capture pages after JavaScript has modified the DOM
+- **Client-side Script Testing**: Test JavaScript applications that modify the DOM
+
 ### Web Scraping
 - Extract structured data from JavaScript-heavy websites
-- Capture dynamic content that requires JavaScript execution
-- Handle complex forms and interactions
-
-### Automated Testing
-- UI testing for web applications
-- Visual regression testing with screenshots
-- Functional testing of JavaScript applications
+- Capture content that requires DOM manipulation to appear
 
 ### Document Generation
-- Convert web pages to PDFs for archiving
+- Convert web pages to PDFs and screenshots
 - Generate reports from web-based dashboards
-- Create print-ready documents from HTML content
 
-### Screenshot Services
-- Capture website previews
-- Generate social media thumbnails
-- Visual validation of web pages
+### Automated Testing
+- UI testing for JavaScript applications
+- Visual regression testing
 
 ## Troubleshooting
 
