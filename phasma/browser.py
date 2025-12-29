@@ -13,6 +13,21 @@ from urllib.parse import urljoin, urlparse
 from .driver import Driver
 
 
+def download_driver(os_name: str | None = None, arch: str | None = None, force: bool = False) -> bool:
+    """
+    Download the PhantomJS driver.
+
+    Args:
+        os_name: Operating system name (e.g., 'windows', 'linux', 'darwin').
+        arch: Architecture ('32bit' or '64bit').
+        force: Whether to force re-download even if driver exists.
+
+    Returns:
+        bool: True if download successful.
+    """
+    return Driver.download(os_name=os_name, arch=arch, force=force)
+
+
 class Error(Exception):
     """Base error class for phasma browser errors."""
     pass
@@ -25,23 +40,24 @@ class TimeoutError(Error):
 
 class Page:
     """Represents a single page in the browser."""
-    
+
     def __init__(self, browser_context, page_id: str):
         self._browser_context = browser_context
         self._driver = browser_context._driver
         self._page_id = page_id
         self._url = None
         self._viewport_size = {"width": 1024, "height": 768}
-        
+        self._page_instance = None  # Will store the PhantomJS process when needed
+
     async def goto(self, url: str, wait_until: str = "load", timeout: int = 30000) -> Optional[str]:
         """
         Navigate to a URL.
-        
+
         Args:
             url: URL to navigate to
             wait_until: When to consider navigation succeeded ("load", "domcontentloaded", "networkidle")
             timeout: Maximum time to wait for navigation in milliseconds
-            
+
         Returns:
             HTML content of the page after navigation
         """
@@ -50,7 +66,7 @@ class Page:
         page.viewportSize = {{ width: {self._viewport_size['width']}, height: {self._viewport_size['height']} }};
         page.settings.javascriptEnabled = true;
         page.settings.localToRemoteUrlAccess = true;
-        
+
         page.open('{url}', function(status) {{
             if (status === 'success') {{
                 window.setTimeout(function() {{
@@ -66,12 +82,12 @@ class Page:
             }}
         }});
         """
-        
+
         result = self._run_phantomjs_script(script)
         content = result.stdout.decode().strip() if result.stdout else ""
         self._url = url
         return content
-    
+
     def _run_phantomjs_script(self, script: str, args=None):
         """Run a PhantomJS script via a temporary file."""
         with tempfile.NamedTemporaryFile(mode='w', suffix='.js', delete=False) as f:
@@ -80,7 +96,8 @@ class Page:
         try:
             result = self._driver.exec(
                 ["--ssl-protocol=any", "--ignore-ssl-errors=true", temp_file] + (args or []),
-                capture_output=True
+                capture_output=True,
+                timeout=60  # Increase timeout for complex operations
             )
             return result
         finally:
@@ -440,26 +457,28 @@ class Page:
     async def evaluate(self, expression: str) -> Any:
         """
         Execute a JavaScript expression in the page context.
-        
+
         Args:
             expression: JavaScript expression to evaluate
-            
+
         Returns:
             Result of the JavaScript expression
         """
+        # For navigation-dependent operations, we should use the existing page
+        # rather than creating a new one each time
         script = f"""
         var page = require('webpage').create();
         page.viewportSize = {{ width: {self._viewport_size['width']}, height: {self._viewport_size['height']} }};
         page.settings.javascriptEnabled = true;
         page.settings.localToRemoteUrlAccess = true;
-        
+
         page.open('{self._url}', function(status) {{
             if (status === 'success') {{
                 window.setTimeout(function() {{
                     var result = page.evaluate(function() {{
                         return {expression};
                     }});
-                    
+
                     console.log(JSON.stringify(result));
                     phantom.exit();
                 }}, 100);
@@ -469,12 +488,53 @@ class Page:
             }}
         }});
         """
-        
+
         result = self._run_phantomjs_script(script)
         if result.returncode != 0:
             error_msg = result.stderr.decode().strip() if result.stderr else "Unknown error"
             raise Error(f"Evaluate failed: {error_msg}")
-        
+
+        output = result.stdout.decode().strip() if result.stdout else ""
+        if output:
+            try:
+                return json.loads(output)
+            except json.JSONDecodeError:
+                return output
+        return None
+
+    async def _evaluate_on_existing_page(self, expression: str) -> Any:
+        """
+        Execute a JavaScript expression on the current page (not a new instance).
+        This is used for operations that should run on an already loaded page.
+        """
+        # Create a temporary script file to execute the expression
+        script_content = f"""
+        var page = require('webpage').create();
+        page.viewportSize = {{ width: {self._viewport_size['width']}, height: {self._viewport_size['height']} }};
+        page.settings.javascriptEnabled = true;
+        page.settings.localToRemoteUrlAccess = true;
+
+        page.open('{self._url}', function(status) {{
+            if (status === 'success') {{
+                window.setTimeout(function() {{
+                    var result = page.evaluate(function() {{
+                        {expression}
+                    }});
+                    console.log(JSON.stringify(result));
+                    phantom.exit();
+                }}, 100);
+            }} else {{
+                console.error('Failed to load URL');
+                phantom.exit(1);
+            }}
+        }});
+        """
+
+        result = self._run_phantomjs_script(script_content)
+        if result.returncode != 0:
+            error_msg = result.stderr.decode().strip() if result.stderr else "Unknown error"
+            raise Error(f"Evaluate failed: {error_msg}")
+
         output = result.stdout.decode().strip() if result.stdout else ""
         if output:
             try:

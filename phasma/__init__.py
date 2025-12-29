@@ -1,11 +1,6 @@
-from .phasma import download_driver, render_page, render_url, execjs
-from .browser import launch, connect, Browser, BrowserContext, Page, ElementHandle, Error, TimeoutError
+from .browser import launch, connect, Browser, BrowserContext, Page, ElementHandle, Error, TimeoutError, download_driver
 
 __all__ = [
-    "download_driver",
-    "render_page",
-    "render_url",
-    "execjs",
     "launch",
     "connect",
     "Browser",
@@ -13,5 +8,6 @@ __all__ = [
     "Page",
     "ElementHandle",
     "Error",
-    "TimeoutError"
+    "TimeoutError",
+    "download_driver"
 ]

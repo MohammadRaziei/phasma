@@ -26,24 +26,17 @@ async def scrape_example():
         title = await page.text_content("h1")
         print(f"Main heading: {title}")
         
-        # Get all paragraph text
-        paragraphs = await page.evaluate("""
-            Array.from(document.querySelectorAll('p')).map(p => p.textContent)
-        """)
-        print(f"Paragraphs found: {len(paragraphs)}")
-        
-        # Get page title
+        # Get page title (simpler evaluation)
         page_title = await page.evaluate("document.title")
         print(f"Page title: {page_title}")
-        
-        # Get all links
-        links = await page.evaluate("""
-            Array.from(document.querySelectorAll('a')).map(a => ({
-                text: a.textContent,
-                href: a.href
-            }))
-        """)
-        print(f"Links found: {len(links)}")
+
+        # Get the main heading again to verify page state
+        main_heading = await page.text_content("h1")
+        print(f"Main heading: {main_heading}")
+
+        # Get paragraph text
+        paragraph_text = await page.text_content("p")
+        print(f"Paragraph text: {paragraph_text[:100]}...")  # First 100 chars
         
         # Take a screenshot of the page
         with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as f:

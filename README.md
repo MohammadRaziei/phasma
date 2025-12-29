@@ -37,35 +37,17 @@ pip install -e .
 
 ## Quick Start
 
-### Using the Legacy Python API
+### Using the Playwright-like API
 
-```python
-from phasma import render_page, render_url, execjs
-
-# The PhantomJS driver is bundled with the package, ready to use.
-# Render an HTML file
-html = render_page("path/to/page.html")
-print(html)
-
-# Render a URL
-content = render_url("https://example.com", wait_time=2000)
-print(content[:500])  # first 500 characters
-
-# Execute JavaScript
-output = execjs("console.log('Hello from PhantomJS');")
-print(output)
-```
-
-### Using the New Playwright-like API
-
-Phasma now includes a Playwright-like API that provides a modern, async interface similar to Playwright:
+Phasma provides a modern, async interface similar to Playwright:
 
 ```python
 import asyncio
 from phasma import launch
 
 async def main():
-    # Launch a browser instance (PhantomJS)
+    # Download and launch a browser instance (PhantomJS)
+    # The driver will be downloaded automatically if not present
     browser = await launch()
 
     try:
