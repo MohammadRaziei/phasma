@@ -43,14 +43,16 @@ class Driver:
 
     def get_exe_access(self):
         # On non-Windows systems, ensure the file is executable
-        if self.system != "Windows":
-            if not os.access(self._bin_path, os.X_OK):
-                try:
-                    current_mode = self._bin_path.stat().st_mode
-                    self._bin_path.chmod(current_mode | stat.S_IEXEC)
-                except OSError:
-                    # Ignore if permission cannot be changed (e.g., read-only FS)
-                    pass
+        if self.system == "Windows":
+            return
+        
+        if not os.access(self._bin_path, os.X_OK):
+            try:
+                current_mode = self._bin_path.stat().st_mode
+                self._bin_path.chmod(current_mode | stat.S_IEXEC)
+            except OSError:
+                # Ignore if permission cannot be changed (e.g., read-only FS)
+                pass
 
     @property
     def bin_path(self) -> Path:
