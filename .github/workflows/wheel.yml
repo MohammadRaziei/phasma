@@ -144,7 +144,7 @@ jobs:
               exit 1
           fi
 
-          PHANTOMJS_BIN = "$SITE_PKG/phasma/driver/phantomjs/bin"
+          PHANTOMJS_BIN = "${SITE_PKG}/phasma/driver/phantomjs/bin"
           if [[ -z "$PHANTOMJS_BIN" || ! -d "$PHANTOMJS_BIN" ]]; then
               echo "Error: Could not determine phantomjs/bin directory." >&2
               exit 1
