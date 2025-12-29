@@ -109,6 +109,22 @@ jobs:
         run: |
           pip install pytest-cov pytest-xdist pytest-asyncio
 
+      - name: List of site package
+        run: |
+          SITE_PKG=$(python -c "
+          import site, sys, os
+          paths = getattr(site, 'getsitepackages', lambda: [p for p in sys.path if 'site-packages' in p and os.path.isdir(p)])()
+          print(paths[0] if paths else '')
+          ")
+
+          if [[ -z "$SITE_PKG" || ! -d "$SITE_PKG" ]]; then
+              echo "Error: Could not determine site-packages directory." >&2
+              exit 1
+          fi
+
+          echo "Listing: $SITE_PKG"
+          ls -lhR "$SITE_PKG"
+
       - name: Run tests
         run: |
           python -m pytest tests/ -v --cov -n 4
