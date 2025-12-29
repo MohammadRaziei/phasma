@@ -64,12 +64,3 @@ def test_render_page_string():
     )
     assert result.returncode == 0
     assert "test" in result.stdout
-
-if __name__ == "__main__":
-    # Run tests manually
-    test_driver_version()
-    test_driver_path()
-    test_driver_download()
-    test_render_page_file()
-    test_render_page_string()
-    print("All CLI tests passed.")
