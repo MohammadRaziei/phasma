@@ -13,32 +13,17 @@
 - **Async Support**: Full async/await support for efficient concurrent operations
 - **Modern Design**: Clean, intuitive API that follows current best practices
 
-### 🌐 Browser Automation
-- **Page Navigation**: Navigate to URLs with `page.goto()`
+### 🌐 Browser Automation & Media Generation
+- **Page Navigation**: Navigate to URLs with `page.goto()`, extract content with `text_content()`, `inner_html()`
 - **Element Interaction**: Click, fill, and interact with page elements
-- **JavaScript Execution**: Run JavaScript in the page context
-- **Content Extraction**: Extract text, HTML, and other content from pages
+- **JavaScript Execution**: Run JavaScript in the page context with `evaluate()`
+- **Media Generation**: Capture screenshots and generate PDFs with customizable options
 
-### 📸 Media Generation
-- **Screenshots**: Capture page screenshots in PNG, JPG, and other formats
-- **PDF Generation**: Generate PDFs with customizable formatting options
-- **High Quality**: Full control over viewport size, quality, and formatting
-
-### 🛠️ Developer Experience
+### 🛠️ Zero Setup Required
 - **No External Dependencies**: No need to install browsers, Node.js, npm, or browser drivers
-- **Bundled PhantomJS**: Complete PhantomJS engine included in the package (~20MB)
-- **OS Independent**: Fully cross-platform with embedded binaries
-- **Zero Configuration**: No setup required - just install and use
+- **Bundled PhantomJS**: Complete PhantomJS engine included (~20MB) - works across all platforms
+- **Self-Contained**: OS-independent with embedded binaries, no additional setup needed
 - **CLI Interface**: Command-line tools for quick operations
-
-### 📋 Technical Specifications
-- **Python 3.4+**: Compatible with modern Python versions
-- **No External Dependencies**: No need for browsers, Node.js, npm, or browser drivers
-- **Self-Contained**: Bundled PhantomJS engine included (~20MB)
-- **OS Independent**: Works across Windows, Linux, and macOS without platform-specific dependencies
-- **Lightweight**: Minimal dependencies and fast installation
-- **Reliable**: Comprehensive test suite and error handling
-- **Secure**: SSL control and environment isolation options
 
 ## Installation
 
@@ -51,11 +36,9 @@ pip install phasma
 ### System Requirements
 - **Python**: 3.4 or higher
 - **OS**: Windows, Linux, or macOS (32-bit and 64-bit supported)
-- **No External Dependencies**: No need to install browsers, Node.js, npm, or browser drivers
-- **Memory**: Minimal memory footprint
 - **Storage**: ~20MB for bundled PhantomJS engine (included in package)
 
-Phasma is completely self-contained - it includes the PhantomJS engine directly in the package (~20MB) and requires no external dependencies. No need to install Chrome, Firefox, Node.js, npm, or any browser drivers. The bundled PhantomJS engine is OS-independent and works across all platforms.
+Phasma is completely self-contained with no external dependencies - no need to install browsers, Node.js, npm, or browser drivers.
 
 ### From Source
 For development or latest features:
@@ -164,10 +147,6 @@ Phasma also provides a powerful command-line interface for quick operations:
 python -m phasma driver --version    # Display driver version
 python -m phasma driver --path       # Show driver executable path
 
-# Download and manage the driver
-python -m phasma driver download                    # Download driver
-python -m phasma driver download --force           # Force re-download
-
 # Execute PhantomJS directly with custom arguments
 python -m phasma driver exec script.js
 python -m phasma driver exec --cwd /path/to/dir script.js
@@ -192,80 +171,31 @@ python -m phasma execjs "document.title" --arg value1 --arg value2
 
 ### Core Functions
 
-#### `launch(options=None)`
-Launches a new browser instance with automatic driver management.
-
-- **Parameters**: `options` (dict, optional) - Browser launch options
-- **Returns**: `Browser` object
-- **Example**: `browser = await launch()`
-
-#### `connect(options=None)`
-Connects to an existing browser instance (PhantomJS implementation similar to launch).
-
-- **Parameters**: `options` (dict, optional) - Connection options
-- **Returns**: `Browser` object
-
-#### `download_driver(os_name=None, arch=None, force=False)`
-Downloads the PhantomJS driver for the specified platform.
-
-- **Parameters**:
-  - `os_name` (str, optional) - Operating system ('windows', 'linux', 'darwin')
-  - `arch` (str, optional) - Architecture ('32bit', '64bit')
-  - `force` (bool) - Force re-download if driver exists
-- **Returns**: `bool` - Success status
+- `launch(options=None)` → `Browser`: Launch a new browser instance
+- `connect(options=None)` → `Browser`: Connect to existing browser instance
+- `download_driver(os_name=None, arch=None, force=False)` → `bool`: Download PhantomJS driver
 
 ### Browser Classes
 
-#### `Browser`
-Represents a browser instance with full lifecycle management.
+- `Browser`: Full lifecycle management
+  - `new_page()` → `Page`, `new_context()` → `BrowserContext`, `close()`, `is_connected()` → `bool`
 
-- **Methods**:
-  - `new_page()` → `Page`: Create a new page
-  - `new_context()` → `BrowserContext`: Create a new context
-  - `close()`: Close the browser
-  - `is_connected()` → `bool`: Check connection status
+- `BrowserContext`: Session management
+  - `new_page()` → `Page`, `close()`
 
-#### `BrowserContext`
-Manages a browser context/session.
+- `Page`: Web page automation
+  - **Navigation**: `goto(url, timeout=30000)`, `set_viewport_size(width, height)`
+  - **Content**: `text_content(selector)`, `inner_html(selector)`, `evaluate(expression)`
+  - **Interaction**: `click(selector)`, `fill(selector, value)`, `wait_for_selector(selector, timeout=30000)`
+  - **Media**: `screenshot(path)`, `pdf(path)`
 
-- **Methods**:
-  - `new_page()` → `Page`: Create a new page in this context
-  - `close()`: Close the context
-
-#### `Page`
-Represents a single web page with comprehensive automation capabilities.
-
-- **Navigation**:
-  - `goto(url, wait_until="load", timeout=30000)` → `str`: Navigate to URL
-  - `set_viewport_size(width, height)`: Set viewport dimensions
-
-- **Content Extraction**:
-  - `text_content(selector)` → `str`: Get element text content
-  - `inner_html(selector)` → `str`: Get element inner HTML
-  - `evaluate(expression)` → `Any`: Execute JavaScript expression
-
-- **Element Interaction**:
-  - `click(selector)`: Click an element
-  - `fill(selector, value)`: Fill input field
-  - `wait_for_selector(selector, timeout=30000)` → `ElementHandle`: Wait for element
-
-- **Media Generation**:
-  - `screenshot(path, type="png", quality=100)` → `bytes`: Take screenshot
-  - `pdf(path, format="A4", landscape=False, margin="1cm")` → `bytes`: Generate PDF
-
-#### `ElementHandle`
-Represents a specific DOM element with interaction methods.
-
-- **Methods**:
-  - `click()`: Click the element
-  - `fill(value)`: Fill the element (if input)
-  - `text_content()` → `str`: Get text content
-  - `inner_html()` → `str`: Get inner HTML
+- `ElementHandle`: DOM element interaction
+  - `click()`, `fill(value)`, `text_content()`, `inner_html()`
 
 ### Error Handling
 
-- `Error`: Base error class for all Phasma errors
-- `TimeoutError`: Raised when operations exceed timeout limits
+- `Error`: Base error class
+- `TimeoutError`: Raised on timeout
 
 ## Advanced Usage
 
