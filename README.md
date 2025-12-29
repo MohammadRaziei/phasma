@@ -26,16 +26,16 @@
 
 ### 🛠️ Developer Experience
 - **No External Dependencies**: No need to install browsers, Node.js, npm, or browser drivers
-- **Bundled PhantomJS**: Complete PhantomJS engine included in the package
-- **Automatic Driver Management**: Driver downloaded and managed automatically
-- **Cross-Platform**: Works seamlessly on Windows, Linux, and macOS
+- **Bundled PhantomJS**: Complete PhantomJS engine included in the package (~20MB)
+- **OS Independent**: Fully cross-platform with embedded binaries
 - **Zero Configuration**: No setup required - just install and use
 - **CLI Interface**: Command-line tools for quick operations
 
 ### 📋 Technical Specifications
 - **Python 3.4+**: Compatible with modern Python versions
 - **No External Dependencies**: No need for browsers, Node.js, npm, or browser drivers
-- **Self-Contained**: Bundled PhantomJS engine included
+- **Self-Contained**: Bundled PhantomJS engine included (~20MB)
+- **OS Independent**: Works across Windows, Linux, and macOS without platform-specific dependencies
 - **Lightweight**: Minimal dependencies and fast installation
 - **Reliable**: Comprehensive test suite and error handling
 - **Secure**: SSL control and environment isolation options
@@ -53,9 +53,9 @@ pip install phasma
 - **OS**: Windows, Linux, or macOS (32-bit and 64-bit supported)
 - **No External Dependencies**: No need to install browsers, Node.js, npm, or browser drivers
 - **Memory**: Minimal memory footprint
-- **Storage**: ~50MB for bundled PhantomJS engine (downloaded automatically)
+- **Storage**: ~20MB for bundled PhantomJS engine (included in package)
 
-Phasma is completely self-contained - it includes the PhantomJS engine and requires no external dependencies. No need to install Chrome, Firefox, Node.js, npm, or any browser drivers. The bundled PhantomJS engine is automatically downloaded and managed when needed.
+Phasma is completely self-contained - it includes the PhantomJS engine directly in the package (~20MB) and requires no external dependencies. No need to install Chrome, Firefox, Node.js, npm, or any browser drivers. The bundled PhantomJS engine is OS-independent and works across all platforms.
 
 ### From Source
 For development or latest features:
@@ -585,8 +585,6 @@ Phasma follows Semantic Versioning (SemVer):
 
 - **PhantomJS Team**: For creating the powerful headless browser engine
 - **Playwright Team**: For inspiration with the excellent API design
-- **Python Community**: For the robust ecosystem and tooling
-- **Open Source Contributors**: For continuous improvements and feedback
 
 ---
 
