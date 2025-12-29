@@ -13,6 +13,12 @@ from urllib.parse import urljoin, urlparse
 from .driver import Driver
 
 
+def _escape_js_string(s):
+    """Escape a string for safe insertion into JavaScript code."""
+    if isinstance(s, Path):
+        s = str(s)
+    # Escape backslashes, single quotes, double quotes, and newlines
+    return s.replace('\\', '\\\\').replace("'", "\\'").replace('"', '\\"').replace('\n', '\\n').replace('\r', '\\r')
 
 
 class Error(Exception):
@@ -54,7 +60,7 @@ class Page:
         page.settings.javascriptEnabled = true;
         page.settings.localToRemoteUrlAccess = true;
 
-        page.open('{url}', function(status) {{
+        page.open('{_escape_js_string(url)}', function(status) {{
             if (status === 'success') {{
                 window.setTimeout(function() {{
                     var result = page.evaluate(function() {{
@@ -103,7 +109,7 @@ class Page:
         page.settings.javascriptEnabled = true;
         page.settings.localToRemoteUrlAccess = true;
         
-        page.open('{self._url}', function(status) {{
+        page.open('{_escape_js_string(self._url)}', function(status) {{
             if (status === 'success') {{
                 window.setTimeout(function() {{
                     var element = page.evaluate(function(sel) {{
@@ -115,8 +121,8 @@ class Page:
                             return true;
                         }}
                         return false;
-                    }}, '{selector}');
-                    
+                    }}, '{_escape_js_string(selector)}');
+
                     if (element) {{
                         console.log('Clicked element');
                     }} else {{
@@ -150,7 +156,7 @@ class Page:
         page.settings.javascriptEnabled = true;
         page.settings.localToRemoteUrlAccess = true;
         
-        page.open('{self._url}', function(status) {{
+        page.open('{_escape_js_string(self._url)}', function(status) {{
             if (status === 'success') {{
                 window.setTimeout(function() {{
                     var success = page.evaluate(function(sel, val) {{
@@ -161,16 +167,16 @@ class Page:
                             var inputEvent = document.createEvent('Event');
                             inputEvent.initEvent('input', true, true);
                             el.dispatchEvent(inputEvent);
-                            
+
                             var changeEvent = document.createEvent('Event');
                             changeEvent.initEvent('change', true, true);
                             el.dispatchEvent(changeEvent);
-                            
+
                             return true;
                         }}
                         return false;
-                    }}, '{selector}', '{value}');
-                    
+                    }}, '{_escape_js_string(selector)}', '{_escape_js_string(value)}');
+
                     if (success) {{
                         console.log('Filled element');
                     }} else {{
@@ -206,14 +212,14 @@ class Page:
         page.settings.javascriptEnabled = true;
         page.settings.localToRemoteUrlAccess = true;
         
-        page.open('{self._url}', function(status) {{
+        page.open('{_escape_js_string(self._url)}', function(status) {{
             if (status === 'success') {{
                 window.setTimeout(function() {{
                     var text = page.evaluate(function(sel) {{
                         var el = document.querySelector(sel);
                         return el ? el.textContent : null;
-                    }}, '{selector}');
-                    
+                    }}, '{_escape_js_string(selector)}');
+
                     if (text !== null) {{
                         console.log(text);
                     }} else {{
@@ -251,14 +257,14 @@ class Page:
         page.settings.javascriptEnabled = true;
         page.settings.localToRemoteUrlAccess = true;
         
-        page.open('{self._url}', function(status) {{
+        page.open('{_escape_js_string(self._url)}', function(status) {{
             if (status === 'success') {{
                 window.setTimeout(function() {{
                     var html = page.evaluate(function(sel) {{
                         var el = document.querySelector(sel);
                         return el ? el.innerHTML : null;
-                    }}, '{selector}');
-                    
+                    }}, '{_escape_js_string(selector)}');
+
                     if (html !== null) {{
                         console.log(html);
                     }} else {{
@@ -307,7 +313,7 @@ class Page:
         page.open('{self._url}', function(status) {{
             if (status === 'success') {{
                 window.setTimeout(function() {{
-                    page.render('{path}');
+                    page.render('{_escape_js_string(path)}');
                     console.log('Screenshot saved');
                     phantom.exit();
                 }}, 100);
@@ -366,7 +372,7 @@ class Page:
         page.open('{self._url}', function(status) {{
             if (status === 'success') {{
                 window.setTimeout(function() {{
-                    page.render('{path}', {{ format: 'pdf' }});
+                    page.render('{_escape_js_string(path)}', {{ format: 'pdf' }});
                     console.log('PDF saved');
                     phantom.exit();
                 }}, 100);
@@ -403,7 +409,7 @@ class Page:
         page.settings.javascriptEnabled = true;
         page.settings.localToRemoteUrlAccess = true;
         
-        page.open('{self._url}', function(status) {{
+        page.open('{_escape_js_string(self._url)}', function(status) {{
             if (status === 'success') {{
                 window.setTimeout(function() {{
                     var result = page.evaluate(function(sel, expr) {{
@@ -412,8 +418,8 @@ class Page:
                             return eval('(function(){{ return ' + expr + '; }}).call(el)');
                         }}
                         return null;
-                    }}, '{selector}', '{expression}');
-                    
+                    }}, '{_escape_js_string(selector)}', '{_escape_js_string(expression)}');
+
                     if (result !== null) {{
                         console.log(JSON.stringify(result));
                     }} else {{
@@ -459,7 +465,7 @@ class Page:
         page.settings.javascriptEnabled = true;
         page.settings.localToRemoteUrlAccess = true;
 
-        page.open('{self._url}', function(status) {{
+        page.open('{_escape_js_string(self._url)}', function(status) {{
             if (status === 'success') {{
                 window.setTimeout(function() {{
                     var result = page.evaluate(function() {{
@@ -501,7 +507,7 @@ class Page:
         page.settings.javascriptEnabled = true;
         page.settings.localToRemoteUrlAccess = true;
 
-        page.open('{self._url}', function(status) {{
+        page.open('{_escape_js_string(self._url)}', function(status) {{
             if (status === 'success') {{
                 window.setTimeout(function() {{
                     var result = page.evaluate(function() {{
@@ -548,13 +554,13 @@ class Page:
         page.settings.javascriptEnabled = true;
         page.settings.localToRemoteUrlAccess = true;
         
-        page.open('{self._url}', function(status) {{
+        page.open('{_escape_js_string(self._url)}', function(status) {{
             if (status === 'success') {{
                 window.setTimeout(function() {{
                     var exists = page.evaluate(function(sel) {{
                         return document.querySelector(sel) !== null;
-                    }}, '{selector}');
-                    
+                    }}, '{_escape_js_string(selector)}');
+
                     if (exists) {{
                         console.log('Element found');
                     }} else {{

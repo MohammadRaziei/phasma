@@ -156,162 +156,58 @@ Examples:
             sys.exit(1)
 
     elif args.command == "render-page":
-        # Use the new Playwright-like API for rendering HTML pages
-        async def render_page_content():
-            browser = await phasma.browser.launch()
-            try:
-                page = await browser.new_page()
-
-                # Set viewport size
-                width, height = map(int, args.viewport.split('x'))
-                await page.set_viewport_size(width, height)
-
-                # Read HTML content
-                input_path = Path(args.input)
-                if input_path.is_file():
-                    html_content = input_path.read_text(encoding='utf-8')
-                else:
-                    html_content = args.input
-
-                # Create a temporary HTML file with the content and navigate to it
-                with tempfile.NamedTemporaryFile(mode='w', suffix='.html', delete=False, encoding='utf-8') as temp_file:
-                    temp_file.write(html_content)
-                    temp_html_path = temp_file.name
-
-                try:
-                    # Navigate to the temporary HTML file
-                    await page.goto(f"file://{temp_html_path}")
-
-                    # Wait for the specified time
-                    await asyncio.sleep(args.wait / 1000.0)  # Convert milliseconds to seconds
-
-                    # Get the rendered content
-                    rendered = await page.evaluate("document.documentElement.outerHTML")
-                    if not args.output:
-                        print(rendered)
-                    else:
-                        Path(args.output).write_text(rendered, encoding='utf-8')
-                        print(f"Rendered content saved to {args.output}")
-
-                finally:
-                    # Clean up the temporary file
-                    if os.path.exists(temp_html_path):
-                        os.unlink(temp_html_path)
-
-            finally:
-                await browser.close()
-
-        asyncio.run(render_page_content())
+        # Use the function from phasma module
+        result = phasma.sync_render_page_content(
+            input_content=args.input,
+            output_path=args.output,
+            viewport=args.viewport,
+            wait=args.wait
+        )
+        if result:
+            print(result)
 
     elif args.command == "render-url":
-        # Use the new Playwright-like API for rendering URLs
-        async def render_url_content():
-            browser = await phasma.browser.launch()
-            try:
-                page = await browser.new_page()
-
-                # Set viewport size
-                width, height = map(int, args.viewport.split('x'))
-                await page.set_viewport_size(width, height)
-
-                # Navigate to URL
-                await page.goto(args.url)
-                # Wait for the specified time
-                await asyncio.sleep(args.wait / 1000.0)  # Convert milliseconds to seconds
-
-                # Get the rendered content
-                rendered = await page.evaluate("document.documentElement.outerHTML")
-                if not args.output:
-                    print(rendered)
-                else:
-                    Path(args.output).write_text(rendered, encoding='utf-8')
-                    print(f"Rendered content saved to {args.output}")
-
-            finally:
-                await browser.close()
-
-        asyncio.run(render_url_content())
+        # Use the function from phasma module
+        result = phasma.sync_render_url_content(
+            url=args.url,
+            output_path=args.output,
+            viewport=args.viewport,
+            wait=args.wait
+        )
+        if result:
+            print(result)
 
     elif args.command == "execjs":
-        # Use the new Playwright-like API for executing JavaScript
-        async def exec_js():
-            browser = await phasma.browser.launch()
-            try:
-                page = await browser.new_page()
-
-                # Navigate to a blank page first
-                await page.goto("about:blank")
-
-                # Execute the JavaScript code
-                if args.script == "-":
-                    script = sys.stdin.read()
-                else:
-                    script = args.script
-
-                # Evaluate the script in the page context
-                result = await page.evaluate(script)
-                print(result)
-
-            finally:
-                await browser.close()
-
-        asyncio.run(exec_js())
+        # Use the function from phasma module
+        if args.script == "-":
+            script = sys.stdin.read()
+        else:
+            script = args.script
+        result = phasma.sync_execute_js_script(script)
+        print(result)
 
     elif args.command == "screenshot":
-        # Use the new Playwright-like API for screenshot
-        async def take_screenshot():
-            browser = await phasma.browser.launch()
-            try:
-                page = await browser.new_page()
-
-                # Set viewport size
-                width, height = map(int, args.viewport.split('x'))
-                await page.set_viewport_size(width, height)
-
-                # Navigate to URL
-                await page.goto(args.url)
-                # Wait for the specified time
-                import asyncio
-                await asyncio.sleep(args.wait / 1000.0)  # Convert milliseconds to seconds
-
-                # Take screenshot
-                await page.screenshot(path=args.output)
-                print(f"Screenshot saved to {args.output}")
-
-            finally:
-                await browser.close()
-
-        asyncio.run(take_screenshot())
+        # Use the function from phasma module
+        phasma.sync_take_screenshot(
+            url=args.url,
+            output_path=args.output,
+            viewport=args.viewport,
+            wait=args.wait
+        )
+        print(f"Screenshot saved to {args.output}")
 
     elif args.command == "pdf":
-        # Use the new Playwright-like API for PDF generation
-        async def generate_pdf():
-            browser = await phasma.browser.launch()
-            try:
-                page = await browser.new_page()
-
-                # Set viewport size
-                width, height = map(int, args.viewport.split('x'))
-                await page.set_viewport_size(width, height)
-
-                # Navigate to URL
-                await page.goto(args.url)
-                # Wait for the specified time
-                await asyncio.sleep(args.wait / 1000.0)  # Convert milliseconds to seconds
-
-                # Generate PDF with specified options
-                await page.pdf(
-                    path=args.output,
-                    format=args.format,
-                    landscape=args.landscape,
-                    margin=args.margin
-                )
-                print(f"PDF saved to {args.output}")
-
-            finally:
-                await browser.close()
-
-        asyncio.run(generate_pdf())
+        # Use the function from phasma module
+        phasma.sync_generate_pdf(
+            url=args.url,
+            output_path=args.output,
+            format=args.format,
+            landscape=args.landscape,
+            margin=args.margin,
+            viewport=args.viewport,
+            wait=args.wait
+        )
+        print(f"PDF saved to {args.output}")
 
     else:
         parser.print_help()
