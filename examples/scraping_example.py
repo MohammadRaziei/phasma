@@ -3,7 +3,6 @@ Example showing how to use the new Playwright-like API for web scraping.
 """
 import asyncio
 import tempfile
-from pathlib import Path
 
 import phasma
 
