@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Dynamic Content Example</title>
+</head>
+<body>
+    <h1>Dynamic Content Test</h1>
+    <div id="content">Initial content</div>
+    <button id="updateBtn">Update Content</button>
+    
+    <script>
+        document.getElementById('updateBtn').addEventListener('click', function() {
+            setTimeout(function() {
+                document.getElementById('content').innerHTML = 'Updated by JavaScript!';
+            }, 100);
+        });
+        
+        // Also update content after 500ms automatically
+        setTimeout(function() {
+            document.getElementById('content').innerHTML = 'Auto-updated after 500ms!';
+        }, 500);
+    </script>
+</body>
+</html>
