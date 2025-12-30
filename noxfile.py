@@ -14,7 +14,7 @@ nox.options.default_venv_backend = None
 nox.options.sessions = ["test", "lint", "format"]
 
 # Package directory
-PACKAGE_DIR = Path("src/phasma")
+PACKAGE_DIR = Path(__file__).parent / "phasma"
 
 
 def run_command(cmd, cwd=None, env=None):
@@ -174,10 +174,11 @@ def clean(session: nox.Session) -> None:
     
     # Remove downloaded driver files
     driver_dir = PACKAGE_DIR / "driver" / "phantomjs"
-    remove_path(driver_dir)
+    # remove_path(driver_dir)
     
     # Remove __pycache__ directories
-    remove_rglob("__pycache__")
+    for dir_name in ["__pycache__", ".pytest_cache", ".ruff_cache"]:
+        remove_rglob(dir_name)
     
     # Remove compiled Python files
     for pattern in ["*.pyc", "*.pyo", "*.pyd", ".coverage"]:
