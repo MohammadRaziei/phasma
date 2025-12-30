@@ -4,7 +4,6 @@ This shows how to use the new API which is similar to Playwright but uses Phanto
 """
 import asyncio
 import tempfile
-from pathlib import Path
 
 import phasma
 

@@ -4,7 +4,6 @@ This demonstrates how Phasma can execute JavaScript code in PhantomJS context.
 """
 import asyncio
 import tempfile
-from pathlib import Path
 
 import phasma
 

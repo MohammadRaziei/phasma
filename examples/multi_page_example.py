@@ -2,7 +2,6 @@
 Example showing how to use multiple pages and contexts with the Playwright-like API.
 """
 import asyncio
-from pathlib import Path
 
 import phasma
 
