@@ -151,8 +151,9 @@ jobs:
 
       - name: Run tests
         run: |
+          python -m phasma driver download
           cd tests
-          python -m pytest -v --cov 
+          python -m pytest -v --cov -n 4
 
 
   release:
