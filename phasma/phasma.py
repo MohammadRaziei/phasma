@@ -42,7 +42,8 @@ async def render_page_content(input_content, output_path=None, viewport="1024x76
 
         try:
             # Navigate to the temporary HTML file
-            await page.goto(f"file://{temp_html_path}")
+            temp_html_url = Path(temp_html_path).as_uri()
+            await page.goto(temp_html_url)
 
             # Wait for the specified time
             await asyncio.sleep(wait / 1000.0)  # Convert milliseconds to seconds
