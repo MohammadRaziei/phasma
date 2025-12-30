@@ -29,11 +29,26 @@ async def render_page_content(input_content, output_path=None, viewport="1024x76
         width, height = map(int, viewport.split("x"))
         await page.set_viewport_size(width, height)
 
-        # Read HTML content
-        input_path = Path(input_content)
-        if input_path.is_file():
-            html_content = input_path.read_text(encoding="utf-8")
+        # Read HTML content - check if input_content is a valid file path
+        # Only treat as file if it looks like a file path and exists
+        is_potential_file_path = (
+            len(input_content) < 1000  # Reasonable length for a file path
+            and (input_content.startswith('.') or '/' in input_content or '\\' in input_content)
+            and not input_content.strip().startswith('<')  # Doesn't look like HTML
+        )
+
+        if is_potential_file_path:
+            try:
+                input_path = Path(input_content)
+                if input_path.is_file():
+                    html_content = input_path.read_text(encoding="utf-8")
+                else:
+                    html_content = input_content  # Not an existing file, treat as HTML
+            except OSError:
+                # If Path construction fails, treat as HTML content
+                html_content = input_content
         else:
+            # Treat as HTML content string
             html_content = input_content
 
         # Create a temporary HTML file with the content and navigate to it
