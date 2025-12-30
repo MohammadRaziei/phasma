@@ -3,10 +3,15 @@ Phasma - PhantomJS driver for Python.
 Command-line interface with Playwright-like API support.
 """
 import argparse
+import logging
 import sys
 
 import phasma
 from phasma.driver import Driver
+
+# Set up logging
+logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
+logger = logging.getLogger(__name__)
 
 
 def main():
@@ -112,10 +117,10 @@ Examples:
         if args.driver_action == "download":
             success = Driver.download(os_name=args.os, arch=args.arch, force=args.force)
             if success:
-                print("Driver downloaded successfully.")
+                logger.info("Driver downloaded successfully.")
                 sys.exit(0)
             else:
-                print("Driver download failed.")
+                logger.error("Driver download failed.")
                 sys.exit(1)
         elif args.driver_action == "exec":
             driver = Driver()
@@ -128,7 +133,7 @@ Examples:
                     cwd=args.cwd,
                 )
             except Exception as e:
-                print(f"Error: {e}", file=sys.stderr)
+                logger.error(f"Error: {e}")
                 sys.exit(1)
 
             if args.capture_output:
@@ -140,11 +145,11 @@ Examples:
         elif args.version:
             driver = Driver()
             version = driver.version
-            print(f"PhantomJS driver version: {version}")
+            logger.info(f"PhantomJS driver version: {version}")
         elif args.path:
             driver = Driver()
             path = driver.bin_path
-            print(path)
+            logger.info(str(path))
         else:
             driver_parser.print_help()
             sys.exit(1)
@@ -158,7 +163,7 @@ Examples:
             wait=args.wait
         )
         if result:
-            print(result)
+            print(result)  # Keep print for output content to stdout
 
     elif args.command == "render-url":
         # Use the function from phasma module
@@ -169,7 +174,7 @@ Examples:
             wait=args.wait
         )
         if result:
-            print(result)
+            print(result)  # Keep print for output content to stdout
 
     elif args.command == "execjs":
         # Use the function from phasma module
@@ -178,7 +183,7 @@ Examples:
         else:
             script = args.script
         result = phasma.sync_execute_js_script(script)
-        print(result)
+        print(result)  # Keep print for output content to stdout
 
     elif args.command == "screenshot":
         # Use the function from phasma module
@@ -188,7 +193,7 @@ Examples:
             viewport=args.viewport,
             wait=args.wait
         )
-        print(f"Screenshot saved to {args.output}")
+        logger.info(f"Screenshot saved to {args.output}")
 
     elif args.command == "pdf":
         # Use the function from phasma module
@@ -201,7 +206,7 @@ Examples:
             viewport=args.viewport,
             wait=args.wait
         )
-        print(f"PDF saved to {args.output}")
+        logger.info(f"PDF saved to {args.output}")
 
     else:
         parser.print_help()
