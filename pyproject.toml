@@ -111,6 +111,8 @@ ban-relative-imports = "all"
 # Tests can use magic values, assertions, and relative imports
 "tests/**/*" = ["PLR2004", "S101", "TID252", "E501", "F401"]
 "__init__.py" = ["F401"]
+# Allow print statements and unused imports in example files
+"examples/*.py" = ["T201"]
 
 [tool.coverage.run]
 source_pkgs = ["phasma"]

@@ -1,4 +1,3 @@
-import asyncio
 import tempfile
 from pathlib import Path
 
@@ -9,7 +8,7 @@ import phasma
 
 class TestPhasma:
     """Test suite for the Phasma functions using the new Playwright-like API."""
-    @pytest.mark.asyncio
+    @pytest.mark.asyncio()
     async def test_page_navigation(self):
         """Test page navigation functionality."""
         browser = await phasma.launch()
@@ -32,7 +31,7 @@ class TestPhasma:
         finally:
             await browser.close()
 
-    @pytest.mark.asyncio
+    @pytest.mark.asyncio()
     async def test_page_content_extraction(self):
         """Test extracting content from pages."""
         browser = await phasma.launch()
@@ -55,7 +54,7 @@ class TestPhasma:
         finally:
             await browser.close()
 
-    @pytest.mark.asyncio
+    @pytest.mark.asyncio()
     async def test_screenshot_generation(self):
         """Test screenshot generation."""
         browser = await phasma.launch()
@@ -81,7 +80,7 @@ class TestPhasma:
         finally:
             await browser.close()
 
-    @pytest.mark.asyncio
+    @pytest.mark.asyncio()
     async def test_pdf_generation(self):
         """Test PDF generation."""
         browser = await phasma.launch()
@@ -107,7 +106,7 @@ class TestPhasma:
         finally:
             await browser.close()
 
-    @pytest.mark.asyncio
+    @pytest.mark.asyncio()
     async def test_element_interaction(self):
         """Test element interaction methods."""
         browser = await phasma.launch()

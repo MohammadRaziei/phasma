@@ -3,11 +3,7 @@ Phasma - PhantomJS driver for Python.
 Command-line interface with Playwright-like API support.
 """
 import argparse
-import asyncio
-import os
 import sys
-import tempfile
-from pathlib import Path
 
 import phasma
 from phasma.driver import Driver

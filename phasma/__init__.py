@@ -1,5 +1,14 @@
 # Import new Playwright-like API
-from .browser import Browser, BrowserContext, ElementHandle, Error, Page, TimeoutError, connect, launch
+from .browser import (
+    Browser,
+    BrowserContext,
+    ElementHandle,
+    Error,
+    Page,
+    TimeoutError,
+    connect,
+    launch,
+)
 
 # Import utility functions
 from .phasma import (

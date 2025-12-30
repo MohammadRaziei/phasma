@@ -3,7 +3,6 @@ Test suite for the new utility functions in phasma.py.
 Tests the async and sync versions of render_page_content, render_url_content,
 execute_js_script, take_screenshot, and generate_pdf functions.
 """
-import asyncio
 import tempfile
 from pathlib import Path
 
@@ -15,7 +14,7 @@ import phasma
 class TestPhasmaFunctions:
     """Test suite for the new utility functions in phasma.py."""
 
-    @pytest.mark.asyncio
+    @pytest.mark.asyncio()
     async def test_async_render_page_content_file(self):
         """Test async render_page_content function with a file."""
         html_file = Path(__file__).parent / "data" / "test_page.html"
@@ -26,7 +25,7 @@ class TestPhasmaFunctions:
         assert "<h1>Hello, Phasma!</h1>" in result
         assert "This is a test page." in result
 
-    @pytest.mark.asyncio
+    @pytest.mark.asyncio()
     async def test_async_render_page_content_string(self):
         """Test async render_page_content function with HTML string."""
         html_string = "<html><body><h1>Test String Content</h1></body></html>"
@@ -36,7 +35,7 @@ class TestPhasmaFunctions:
         assert result is not None
         assert "Test String Content" in result
 
-    @pytest.mark.asyncio
+    @pytest.mark.asyncio()
     async def test_async_render_page_content_with_output(self):
         """Test async render_page_content function with output file."""
         html_string = "<html><body><h1>Test Output</h1></body></html>"
@@ -58,7 +57,7 @@ class TestPhasmaFunctions:
             # Clean up
             Path(output_path).unlink()
 
-    @pytest.mark.asyncio
+    @pytest.mark.asyncio()
     async def test_async_render_url_content(self):
         """Test async render_url_content function."""
         # Use a simple URL that should always be available
@@ -68,7 +67,7 @@ class TestPhasmaFunctions:
         assert "<html" in result.lower()
         assert "html>" in result.lower()
 
-    @pytest.mark.asyncio
+    @pytest.mark.asyncio()
     async def test_async_render_url_content_with_output(self):
         """Test async render_url_content function with output file."""
         with tempfile.NamedTemporaryFile(mode="w", suffix=".html", delete=False) as f:
@@ -89,21 +88,21 @@ class TestPhasmaFunctions:
             # Clean up
             Path(output_path).unlink()
 
-    @pytest.mark.asyncio
+    @pytest.mark.asyncio()
     async def test_async_execute_js_script(self):
         """Test async execute_js_script function."""
         result = await phasma.execute_js_script("2 + 2")
 
         assert result == 4
 
-    @pytest.mark.asyncio
+    @pytest.mark.asyncio()
     async def test_async_execute_js_script_with_url(self):
         """Test async execute_js_script function with a specific URL."""
         result = await phasma.execute_js_script("document.title", url="http://httpbin.org/html")
 
         assert result is not None
 
-    @pytest.mark.asyncio
+    @pytest.mark.asyncio()
     async def test_async_take_screenshot(self):
         """Test async take_screenshot function."""
         with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as f:
@@ -119,7 +118,7 @@ class TestPhasmaFunctions:
             # Clean up
             Path(screenshot_path).unlink()
 
-    @pytest.mark.asyncio
+    @pytest.mark.asyncio()
     async def test_async_generate_pdf(self):
         """Test async generate_pdf function."""
         with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as f:
@@ -245,7 +244,7 @@ class TestPhasmaFunctions:
             # Clean up
             Path(pdf_path).unlink()
 
-    @pytest.mark.asyncio
+    @pytest.mark.asyncio()
     async def test_async_render_page_content_with_custom_viewport(self):
         """Test async render_page_content with custom viewport."""
         html_string = "<html><body><h1>Viewport Test</h1></body></html>"
@@ -255,7 +254,7 @@ class TestPhasmaFunctions:
         assert result is not None
         assert "Viewport Test" in result
 
-    @pytest.mark.asyncio
+    @pytest.mark.asyncio()
     async def test_async_take_screenshot_with_custom_viewport(self):
         """Test async take_screenshot with custom viewport."""
         with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as f:
@@ -276,7 +275,7 @@ class TestPhasmaFunctions:
             # Clean up
             Path(screenshot_path).unlink()
 
-    @pytest.mark.asyncio
+    @pytest.mark.asyncio()
     async def test_async_generate_pdf_with_custom_options(self):
         """Test async generate_pdf with custom options."""
         with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as f:

@@ -2,13 +2,11 @@
 Playwright-like API for phasma.
 This module provides a modern API similar to Playwright for PhantomJS automation.
 """
-import asyncio
 import json
 import os
 import tempfile
 from pathlib import Path
 from typing import Any, Dict, Optional, Union
-from urllib.parse import urljoin, urlparse
 
 from .driver import Driver
 

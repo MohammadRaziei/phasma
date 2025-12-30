@@ -1,7 +1,6 @@
 """
 Comprehensive test suite to improve coverage for Phasma.
 """
-import asyncio
 import tempfile
 from pathlib import Path
 
@@ -10,7 +9,7 @@ import pytest
 import phasma
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio()
 async def test_comprehensive_browser_api():
     """Test comprehensive browser API functionality."""
     browser = await phasma.browser.launch()
@@ -74,7 +73,7 @@ def test_driver_functionality():
 
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio()
 async def test_error_handling():
     """Test error handling in the new API."""
     browser = await phasma.browser.launch()
@@ -95,7 +94,6 @@ def test_cli_simulation():
     import sys
     from io import StringIO
 
-    from phasma.__main__ import main
 
     # Capture original stdout
     original_stdout = sys.stdout

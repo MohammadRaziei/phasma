@@ -10,7 +10,7 @@ import pytest
 import phasma
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio()
 async def test_basic_browser_launch():
     """Test basic browser launch and page creation."""
     # Ensure PhantomJS driver is available
@@ -54,7 +54,7 @@ async def test_basic_browser_launch():
         await browser.close()
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio()
 async def test_screenshot():
     """Test screenshot functionality."""
 
@@ -101,7 +101,7 @@ async def test_screenshot():
         await browser.close()
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio()
 async def test_pdf_generation():
     """Test PDF generation functionality."""
     browser = await phasma.launch()
@@ -147,7 +147,7 @@ async def test_pdf_generation():
         await browser.close()
 
 
-@pytest.mark.asyncio
+@pytest.mark.asyncio()
 async def test_element_interaction():
     """Test element interaction methods."""
     browser = await phasma.launch()
