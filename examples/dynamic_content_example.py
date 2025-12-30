@@ -5,8 +5,7 @@ This shows how to handle pages where elements are updated by JavaScript executio
 """
 
 import asyncio
-import tempfile
-from pathlib import Path
+
 import phasma
 
 
@@ -41,11 +40,13 @@ async def demonstrate_dynamic_content_with_wait():
     # Demonstrate with different wait times to see the difference
     print("\n1. Rendering with 100ms wait (JavaScript may not have executed yet):")
     result_short_wait = await phasma.render_page_content(html_content, wait=100)
-    print(f"Content with short wait: {'JavaScript executed' if 'Updated by JavaScript' in result_short_wait else 'JavaScript not executed'}")
+    content_short = "Updated by JavaScript" in result_short_wait
+    print(f"Content with short wait: {'JavaScript executed' if content_short else 'JavaScript not executed'}")
 
     print("\n2. Rendering with 500ms wait (JavaScript should have executed):")
     result_long_wait = await phasma.render_page_content(html_content, wait=500)
-    print(f"Content with long wait: {'JavaScript executed' if 'Updated by JavaScript' in result_long_wait else 'JavaScript not executed'}")
+    content_long = "Updated by JavaScript" in result_long_wait
+    print(f"Content with long wait: {'JavaScript executed' if content_long else 'JavaScript not executed'}")
 
     return result_long_wait
 
@@ -57,7 +58,8 @@ async def demonstrate_dynamic_content_from_file():
     print("\n\nDemonstrating dynamic content from file...")
 
     # Use the example file we created
-    html_file = Path(__file__).parent / "dynamic_content_example.html"
+    import os
+    html_file = os.path.join(os.path.dirname(__file__), "dynamic_content_example.html")
 
     # Render with sufficient wait time to allow JavaScript to execute
     result = await phasma.render_page_content(str(html_file), wait=800)

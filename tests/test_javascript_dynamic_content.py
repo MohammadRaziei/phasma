@@ -1,12 +1,14 @@
-import pytest
 import asyncio
 from pathlib import Path
+
+import pytest
+
 import phasma
 
 
 class TestJavaScriptDynamicContent:
     """Test cases for pages with JavaScript that dynamically updates elements."""
-    
+
     def test_simple_js_content_update(self):
         """Test a simple JavaScript content update."""
         html_content = """
@@ -34,7 +36,7 @@ class TestJavaScriptDynamicContent:
             phasma.render_page_content(html_content, wait=300)
         )
         assert "Updated by JS" in result_long
-    
+
     def test_multiple_js_updates(self):
         """Test multiple JavaScript updates over time."""
         html_content = """
@@ -73,7 +75,7 @@ class TestJavaScriptDynamicContent:
         assert "Step 1: Done" in result_350
         assert "Step 2: Done" in result_350
         assert "Step 3: Done" in result_350
-    
+
     def test_ajax_simulation(self):
         """Test simulated AJAX content loading."""
         html_content = """
@@ -92,13 +94,13 @@ class TestJavaScriptDynamicContent:
         </body>
         </html>
         """
-        
+
         result = asyncio.run(
             phasma.render_page_content(html_content, wait=400)
         )
         assert "Loaded!" in result
         assert "AJAX data loaded" in result
-    
+
     def test_simple_delayed_content_update(self):
         """Test simple delayed content update which is more reliable."""
         html_content = """
@@ -120,7 +122,7 @@ class TestJavaScriptDynamicContent:
         # Direct assignment should work
         assert "After update" in result
         assert "Before update" not in result
-    
+
     def test_dom_element_creation(self):
         """Test JavaScript creating new DOM elements (simplified)."""
         html_content = """
@@ -143,7 +145,7 @@ class TestJavaScriptDynamicContent:
         # Check that the content was replaced by JavaScript
         assert "New content created by JS" in result
         assert "Original content" not in result
-    
+
     def test_timer_based_updates(self):
         """Test content updated by JavaScript timers."""
         html_content = """
@@ -168,13 +170,13 @@ class TestJavaScriptDynamicContent:
         </body>
         </html>
         """
-        
+
         result = asyncio.run(
             phasma.render_page_content(html_content, wait=800)
         )
         # Should have reached at least count 4 or 5
         assert any(str(i) in result for i in range(4, 6))
-    
+
     def test_event_based_updates(self):
         """Test content updated by JavaScript events."""
         html_content = """
@@ -197,12 +199,12 @@ class TestJavaScriptDynamicContent:
         </body>
         </html>
         """
-        
+
         result = asyncio.run(
             phasma.render_page_content(html_content, wait=250)
         )
         assert "Button was clicked!" in result
-    
+
     def test_css_class_modifications(self):
         """Test JavaScript modifying CSS classes."""
         html_content = """
@@ -226,13 +228,13 @@ class TestJavaScriptDynamicContent:
         </body>
         </html>
         """
-        
+
         result = asyncio.run(
             phasma.render_page_content(html_content, wait=300)
         )
         # We can check if the class attribute was updated
-        assert 'class="active highlight"' in result or 'active highlight' in result
-    
+        assert 'class="active highlight"' in result or "active highlight" in result
+
     def test_complex_spa_simulation(self):
         """Test a complex SPA-like behavior with multiple updates."""
         html_content = """
@@ -269,7 +271,7 @@ class TestJavaScriptDynamicContent:
         </body>
         </html>
         """
-        
+
         result = asyncio.run(
             phasma.render_page_content(html_content, wait=500)
         )
@@ -277,7 +279,7 @@ class TestJavaScriptDynamicContent:
         assert "Home Page" in result
         # Previous states might also be present in the HTML
         assert "About Us Page" in result or "Contact Page" in result
-    
+
     def test_async_operation_simulation(self):
         """Test JavaScript async operations like Promises."""
         html_content = """
@@ -294,7 +296,7 @@ class TestJavaScriptDynamicContent:
         </body>
         </html>
         """
-        
+
         result = asyncio.run(
             phasma.render_page_content(html_content, wait=500)
         )
@@ -304,7 +306,7 @@ class TestJavaScriptDynamicContent:
 # Additional test methods for file-based tests
 class TestJavaScriptDynamicContentFromFile:
     """Test cases using HTML files with JavaScript."""
-    
+
     def test_dynamic_content_from_file(self):
         """Test dynamic content from an HTML file."""
         # Create a temporary HTML file with JavaScript
@@ -323,13 +325,13 @@ class TestJavaScriptDynamicContentFromFile:
         </body>
         </html>
         """
-        
+
         # Write to a temporary file
         import tempfile
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.html', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".html", delete=False) as f:
             f.write(html_content)
             temp_file = f.name
-        
+
         try:
             result = asyncio.run(
                 phasma.render_page_content(temp_file, wait=400)

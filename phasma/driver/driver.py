@@ -6,7 +6,6 @@ import sys
 from pathlib import Path
 from typing import List, Optional, Sequence, Union
 
-
 from .download import DRIVER_PATH, DRIVER_VERSION, download_driver
 
 PHASMA_PATH = DRIVER_PATH / "phantomjs"
@@ -44,7 +43,7 @@ class Driver:
         # On non-Windows systems, ensure the file is executable
         if self.system == "Windows":
             return
-        
+
         if not os.access(self._bin_path, os.X_OK):
             try:
                 current_mode = self._bin_path.stat().st_mode
@@ -108,13 +107,13 @@ class Driver:
             args = args.split()
 
         cmd = [str(self.bin_path), *list(args)]
-        
+
         # Handle SSL environment
         if not ssl:
             if env is None:
                 env = os.environ.copy()
-            env['OPENSSL_CONF'] = ''
-        
+            env["OPENSSL_CONF"] = ""
+
         return subprocess.run(
             cmd,
             capture_output=capture_output,

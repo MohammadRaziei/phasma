@@ -20,7 +20,7 @@ def _escape_js_string(s):
     if isinstance(s, Path):
         s = str(s)
     # Escape backslashes, single quotes, double quotes, and newlines
-    return s.replace('\\', '\\\\').replace("'", "\\'").replace('"', '\\"').replace('\n', '\\n').replace('\r', '\\r')
+    return s.replace("\\", "\\\\").replace("'", "\\'").replace('"', '\\"').replace("\n", "\\n").replace("\r", "\\r")
 
 
 class Error(Exception):
@@ -85,7 +85,7 @@ class Page:
 
     def _run_phantomjs_script(self, script: str, args=None):
         """Run a PhantomJS script via a temporary file."""
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.js', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".js", delete=False) as f:
             f.write(script)
             temp_file = f.name
         try:
@@ -97,7 +97,7 @@ class Page:
             return result
         finally:
             os.unlink(temp_file)
-    
+
     async def click(self, selector: str):
         """
         Click an element matching the selector.
@@ -138,12 +138,12 @@ class Page:
             }}
         }});
         """
-        
+
         result = self._run_phantomjs_script(script)
         if result.returncode != 0:
             error_msg = result.stderr.decode().strip() if result.stderr else "Unknown error"
             raise Error(f"Click failed: {error_msg}")
-    
+
     async def fill(self, selector: str, value: str):
         """
         Fill an input field with a value.
@@ -192,12 +192,12 @@ class Page:
             }}
         }});
         """
-        
+
         result = self._run_phantomjs_script(script)
         if result.returncode != 0:
             error_msg = result.stderr.decode().strip() if result.stderr else "Unknown error"
             raise Error(f"Fill failed: {error_msg}")
-    
+
     async def text_content(self, selector: str) -> str:
         """
         Get the text content of an element.
@@ -235,14 +235,14 @@ class Page:
             }}
         }});
         """
-        
+
         result = self._run_phantomjs_script(script)
         if result.returncode != 0:
             error_msg = result.stderr.decode().strip() if result.stderr else "Unknown error"
             raise Error(f"Get text content failed: {error_msg}")
-        
+
         return result.stdout.decode().strip() if result.stdout else ""
-    
+
     async def inner_html(self, selector: str) -> str:
         """
         Get the inner HTML of an element.
@@ -280,14 +280,14 @@ class Page:
             }}
         }});
         """
-        
+
         result = self._run_phantomjs_script(script)
         if result.returncode != 0:
             error_msg = result.stderr.decode().strip() if result.stderr else "Unknown error"
             raise Error(f"Get inner HTML failed: {error_msg}")
-        
+
         return result.stdout.decode().strip() if result.stdout else ""
-    
+
     async def screenshot(self, path: Union[str, Path], full_page: bool = False, type: str = "png", quality: int = 100) -> bytes:
         """
         Take a screenshot of the page.
@@ -332,7 +332,7 @@ class Page:
             raise Error(f"Screenshot failed: {error_msg}")
 
         # Read the saved image file and return as bytes
-        with open(path, 'rb') as f:
+        with open(path, "rb") as f:
             return f.read()
 
     async def pdf(self, path: Union[str, Path],
@@ -391,9 +391,9 @@ class Page:
             raise Error(f"PDF generation failed: {error_msg}")
 
         # Read the saved PDF file and return as bytes
-        with open(path, 'rb') as f:
+        with open(path, "rb") as f:
             return f.read()
-    
+
     async def eval_on_selector(self, selector: str, expression: str) -> Any:
         """
         Execute a JavaScript expression on the first element matching the selector.
@@ -435,12 +435,12 @@ class Page:
             }}
         }});
         """
-        
+
         result = self._run_phantomjs_script(script)
         if result.returncode != 0:
             error_msg = result.stderr.decode().strip() if result.stderr else "Unknown error"
             raise Error(f"Eval on selector failed: {error_msg}")
-        
+
         output = result.stdout.decode().strip() if result.stdout else ""
         if output:
             try:
@@ -448,7 +448,7 @@ class Page:
             except json.JSONDecodeError:
                 return output
         return None
-    
+
     async def evaluate(self, expression: str) -> Any:
         """
         Execute a JavaScript expression in the page context.
@@ -537,8 +537,8 @@ class Page:
             except json.JSONDecodeError:
                 return output
         return None
-    
-    async def wait_for_selector(self, selector: str, timeout: int = 30000) -> Optional['ElementHandle']:
+
+    async def wait_for_selector(self, selector: str, timeout: int = 30000) -> Optional["ElementHandle"]:
         """
         Wait for an element matching the selector to appear in the DOM.
         
@@ -576,14 +576,14 @@ class Page:
             }}
         }});
         """
-        
+
         result = self._run_phantomjs_script(script)
-        if result.returncode == 0 and result.stdout and b'Element found' in result.stdout:
+        if result.returncode == 0 and result.stdout and b"Element found" in result.stdout:
             # Return a simple element handle
             return ElementHandle(self, selector)
         else:
             return None
-    
+
     async def set_viewport_size(self, width: int, height: int):
         """
         Set the viewport size.
@@ -597,25 +597,25 @@ class Page:
 
 class ElementHandle:
     """Represents an element handle in the page."""
-    
+
     def __init__(self, page: Page, selector: str):
         self._page = page
         self._selector = selector
-    
+
     async def click(self):
         """Click the element."""
         await self._page.click(self._selector)
-    
+
     async def fill(self, value: str):
         """Fill the element with a value."""
         # This is a simplified implementation - in a real implementation,
         # we'd need to check if the element is an input field
         await self._page.fill(self._selector, value)
-    
+
     async def text_content(self) -> str:
         """Get the text content of the element."""
         return await self._page.text_content(self._selector)
-    
+
     async def inner_html(self) -> str:
         """Get the inner HTML of the element."""
         return await self._page.inner_html(self._selector)
@@ -623,21 +623,21 @@ class ElementHandle:
 
 class BrowserContext:
     """Represents a browser context (session)."""
-    
+
     def __init__(self, browser, context_id: str, options: Optional[Dict] = None):
         self._browser = browser
         self._driver = browser._driver
         self._context_id = context_id
         self._options = options or {}
         self._pages = []
-    
+
     async def new_page(self) -> Page:
         """Create a new page in this context."""
         page_id = f"page_{len(self._pages)}"
         page = Page(self, page_id)
         self._pages.append(page)
         return page
-    
+
     async def close(self):
         """Close the browser context."""
         # In PhantomJS, contexts are not separate processes, so we just clear pages
@@ -646,26 +646,26 @@ class BrowserContext:
 
 class Browser:
     """Represents a browser instance."""
-    
+
     def __init__(self, driver: Driver, browser_id: str, options: Optional[Dict] = None):
         self._driver = driver
         self._browser_id = browser_id
         self._options = options or {}
         self._contexts = []
         self._is_closed = False
-    
+
     async def new_context(self, options: Optional[Dict] = None) -> BrowserContext:
         """Create a new browser context."""
         context_id = f"context_{len(self._contexts)}"
         context = BrowserContext(self, context_id, options or self._options)
         self._contexts.append(context)
         return context
-    
+
     async def new_page(self) -> Page:
         """Create a new page in the default context."""
         context = await self.new_context()
         return await context.new_page()
-    
+
     async def close(self):
         """Close the browser."""
         # In PhantomJS, we don't have persistent browser processes like Playwright,
@@ -674,7 +674,7 @@ class Browser:
             await context.close()
         self._contexts.clear()
         self._is_closed = True
-    
+
     def is_connected(self) -> bool:
         """Check if the browser is connected."""
         return not self._is_closed

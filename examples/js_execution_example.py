@@ -12,7 +12,7 @@ import phasma
 async def javascript_execution_example():
     """Example of executing JavaScript code."""
     print("Demonstrating JavaScript execution...")
-    
+
     # Execute JavaScript using the new Playwright-like API
     # This shows the core JavaScript execution capability
     print("\n--- Direct JavaScript execution ---")
@@ -48,9 +48,9 @@ async def javascript_execution_example():
 
     finally:
         await browser.close()
-    
+
     print("\n--- Browser-based JavaScript execution ---")
-    
+
     browser = await phasma.launch()
 
     try:
@@ -59,31 +59,31 @@ async def javascript_execution_example():
         # Navigate to a page
         print("Navigating to example.com...")
         await page.goto("http://example.com")
-        
+
         # Get basic page information
         title = await page.evaluate("document.title")
         print(f"Page title: {title}")
-        
+
         # Get heading text using text_content (which works with the current architecture)
         heading = await page.text_content("h1")
         print(f"Main heading: {heading}")
-        
+
         # Take a screenshot to capture the page
         with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as f:
             screenshot_path = f.name
-        
+
         await page.screenshot(path=screenshot_path)
         print(f"\nScreenshot saved: {screenshot_path}")
-        
+
         # Generate a PDF of the page
         with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as f:
             pdf_path = f.name
-        
+
         await page.pdf(path=pdf_path)
         print(f"PDF saved: {pdf_path}")
-        
+
         print("\nJavaScript execution example completed successfully!")
-        
+
     finally:
         await browser.close()
 

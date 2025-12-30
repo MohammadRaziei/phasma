@@ -5,8 +5,7 @@ This shows various scenarios where elements are updated by JavaScript execution.
 """
 
 import asyncio
-import tempfile
-from pathlib import Path
+
 import phasma
 
 
@@ -85,7 +84,7 @@ async def demonstrate_form_submission_simulation():
     """
 
     result = await phasma.render_page_content(html_content, wait=400)
-    success = 'Hello, John!' in result
+    success = "Hello, John!" in result
     print(f"Form submission result: {'Success' if success else 'Failed'}")
 
     return result
@@ -139,7 +138,7 @@ async def demonstrate_timer_based_updates():
     result = await phasma.render_page_content(html_content, wait=1000)
 
     # Check if counter reached at least 3 (should reach 5-6 with 1000ms wait)
-    counter_updates = 'Count: 3' in result or 'Count: 4' in result or 'Count: 5' in result or 'Count: 6' in result
+    counter_updates = "Count: 3" in result or "Count: 4" in result or "Count: 5" in result or "Count: 6" in result
     print(f"Timer updates occurred: {'Yes' if counter_updates else 'No'}")
 
     return result
@@ -249,7 +248,7 @@ async def demonstrate_css_class_changes():
     result = await phasma.render_page_content(html_content, wait=500)
 
     # Check if classes were updated (we can't see CSS directly, but we can see class attributes)
-    class_changes = 'class="highlight active"' in result or 'highlight active' in result
+    class_changes = 'class="highlight active"' in result or "highlight active" in result
     print(f"CSS class changes: {'Applied' if class_changes else 'Not applied'}")
 
     return result

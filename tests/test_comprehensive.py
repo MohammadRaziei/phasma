@@ -92,24 +92,25 @@ async def test_error_handling():
 
 def test_cli_simulation():
     """Test CLI functionality by importing and testing main functions."""
-    from phasma.__main__ import main
     import sys
     from io import StringIO
-    
+
+    from phasma.__main__ import main
+
     # Capture original stdout
     original_stdout = sys.stdout
-    
+
     # Test driver version functionality
     try:
         # Temporarily redirect stdout to capture output
         captured_output = StringIO()
         sys.stdout = captured_output
-        
+
         # Test driver version command simulation
         driver = phasma.driver.Driver()
         version = driver.version
         assert version == "2.1.1"
-        
+
     finally:
         # Restore stdout
         sys.stdout = original_stdout

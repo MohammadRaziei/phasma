@@ -4,11 +4,14 @@ from __future__ import annotations
 import argparse
 import hashlib
 import logging
-import os, platform, sys
+import os
+import platform
 import shutil
-import tarfile, zipfile
-from pathlib import Path
+import sys
+import tarfile
 import urllib.request
+import zipfile
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
@@ -108,7 +111,7 @@ def download_and_extract(
     logger.info("Verifying checksum")
     if sha256(archive) != checksum:
         raise RuntimeError("Checksum mismatch")
-    
+
 
     if dest.exists():
         shutil.rmtree(dest)
@@ -120,12 +123,12 @@ def download_and_extract(
     for suf in ARCHIVE_SUFFIXES:
         if name.endswith(suf):
             name = name[:-len(suf)]
-    extract_path = extract_dir / name 
+    extract_path = extract_dir / name
 
     try:
         os.rename(extract_path, dest)
     except OSError as e:
-        msg = f"{str(e)}\nlist of files at {extract_dir}:\n{os.listdir(extract_dir)}"
+        msg = f"{e!s}\nlist of files at {extract_dir}:\n{os.listdir(extract_dir)}"
         logger.error(msg)
         raise OSError(msg)
 

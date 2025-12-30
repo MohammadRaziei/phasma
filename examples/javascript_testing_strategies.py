@@ -5,8 +5,7 @@ This example shows different strategies for handling dynamic content.
 """
 
 import asyncio
-import tempfile
-from pathlib import Path
+
 import phasma
 
 
@@ -54,9 +53,9 @@ async def demonstrate_optimal_wait_time():
     for wait_time in wait_times:
         result = await phasma.render_page_content(html_content, wait=wait_time)
 
-        step1_complete = 'Step 1: Completed' in result
-        step2_complete = 'Step 2: Completed' in result
-        step3_complete = 'Step 3: Completed' in result
+        step1_complete = "Step 1: Completed" in result
+        step2_complete = "Step 2: Completed" in result
+        step3_complete = "Step 3: Completed" in result
 
         print(f"Wait {wait_time}ms: Step1={step1_complete}, Step2={step2_complete}, Step3={step3_complete}")
 
@@ -93,7 +92,7 @@ async def demonstrate_content_polling():
     # Try with different wait times until content appears
     for wait_time in [100, 200, 300, 500, 700]:
         result = await phasma.render_page_content(html_content, wait=wait_time)
-        content_loaded = 'Content loaded successfully!' in result
+        content_loaded = "Content loaded successfully!" in result
         print(f"Wait {wait_time}ms: Content loaded = {content_loaded}")
         if content_loaded:
             print(f"  -> Optimal wait time is around {wait_time}ms")
@@ -169,7 +168,7 @@ async def demonstrate_complex_single_page_app():
         print(f"  {description}: {'Found' if found else 'Not found'}")
 
     # The final state should be "Welcome to Home" since that was the last navigation
-    final_state_correct = result.count('Welcome to Home') >= 1  # It might appear multiple times
+    final_state_correct = result.count("Welcome to Home") >= 1  # It might appear multiple times
     print(f"  Final state correct: {'Yes' if final_state_correct else 'No'}")
 
 
@@ -269,10 +268,10 @@ async def demonstrate_wait_strategies():
 
     for scenario in scenarios:
         print(f"\n  Demonstrating: {scenario['name']}")
-        result = await phasma.render_page_content(scenario['html'], wait=scenario['recommended_wait'])
+        result = await phasma.render_page_content(scenario["html"], wait=scenario["recommended_wait"])
 
         # Simple check - if it contains "Success", "Complete", or "Response", consider it successful
-        success_indicators = ['Success', 'Complete', 'Response', 'Updated']
+        success_indicators = ["Success", "Complete", "Response", "Updated"]
         success = any(indicator in result for indicator in success_indicators)
         print(f"    Result: {'Success' if success else 'Incomplete'}")
 

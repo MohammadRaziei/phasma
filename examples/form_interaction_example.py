@@ -49,50 +49,50 @@ async def form_interaction_example():
     </body>
     </html>
     """
-    
+
     # Save the form HTML to a temporary file
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.html', delete=False) as f:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".html", delete=False) as f:
         f.write(form_html)
         form_path = f.name
-    
+
     try:
 
         browser = await phasma.launch()
-        
+
         try:
             page = await browser.new_page()
-            
+
             # Navigate to the form
             file_url = Path(form_path).resolve().as_uri()
             await page.goto(file_url)
-            
+
             # Fill in the form fields
             print("Filling form fields...")
             await page.fill("#name", "John Doe")
             await page.fill("#email", "john@example.com")
             await page.fill("#message", "This is a test message from phasma!")
-            
+
             # Click the submit button
             print("Submitting form...")
             await page.click("button[type='submit']")
-            
+
             # Wait a bit for the JavaScript to execute
             await asyncio.sleep(0.5)
-            
+
             # Check the result
             result_text = await page.text_content("#result")
             print(f"Form result: {result_text[:100]}...")  # First 100 chars
-            
+
             # Take a screenshot of the filled form
             with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as f:
                 screenshot_path = f.name
-            
+
             await page.screenshot(path=screenshot_path)
             print(f"Screenshot of filled form saved: {screenshot_path}")
-            
+
         finally:
             await browser.close()
-            
+
     finally:
         # Clean up the temporary form file
         Path(form_path).unlink()

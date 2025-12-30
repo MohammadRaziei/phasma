@@ -1,9 +1,10 @@
 """
 Test CLI interface.
 """
+import os
 import subprocess
 import sys
-import os
+
 
 def test_driver_version():
     """Test driver --version command."""
@@ -11,7 +12,7 @@ def test_driver_version():
         [sys.executable, "-m", "phasma", "driver", "--version"],
         capture_output=True,
         text=True,
-        cwd=os.path.dirname(os.path.dirname(__file__))
+        cwd=os.path.dirname(os.path.dirname(__file__)), check=False
     )
     assert result.returncode == 0
     assert "PhantomJS driver version:" in result.stdout
@@ -22,7 +23,7 @@ def test_driver_path():
         [sys.executable, "-m", "phasma", "driver", "--path"],
         capture_output=True,
         text=True,
-        cwd=os.path.dirname(os.path.dirname(__file__))
+        cwd=os.path.dirname(os.path.dirname(__file__)), check=False
     )
     assert result.returncode == 0
     # Path should contain phantomjs or phantomjs.exe
@@ -35,7 +36,7 @@ def test_driver_download():
         [sys.executable, "-m", "phasma", "driver", "download"],
         capture_output=True,
         text=True,
-        cwd=os.path.dirname(os.path.dirname(__file__))
+        cwd=os.path.dirname(os.path.dirname(__file__)), check=False
     )
     # Accept both success (0) or already exists (maybe non-zero?)
     # We'll just ensure no crash
@@ -48,7 +49,7 @@ def test_render_page_file():
         [sys.executable, "-m", "phasma", "render-page", html_file],
         capture_output=True,
         text=True,
-        cwd=os.path.dirname(os.path.dirname(__file__))
+        cwd=os.path.dirname(os.path.dirname(__file__)), check=False
     )
     assert result.returncode == 0
     assert "<h1>Hello, Phasma!</h1>" in result.stdout
@@ -60,7 +61,7 @@ def test_render_page_string():
         [sys.executable, "-m", "phasma", "render-page", "<html><body>test</body></html>"],
         capture_output=True,
         text=True,
-        cwd=os.path.dirname(os.path.dirname(__file__))
+        cwd=os.path.dirname(os.path.dirname(__file__)), check=False
     )
     assert result.returncode == 0
     assert "test" in result.stdout

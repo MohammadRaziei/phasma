@@ -1,9 +1,11 @@
-import platform, os
+import logging
+import os
+import platform
+import sys
 from pathlib import Path
+
 from setuptools import setup
 from wheel.bdist_wheel import bdist_wheel
-import sys
-import logging
 
 SRC_PATH = Path(__file__).parent
 sys.path.append(SRC_PATH.as_posix())

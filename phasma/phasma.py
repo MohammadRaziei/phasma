@@ -4,6 +4,7 @@ Main phasma module containing utility functions for rendering and processing web
 import asyncio
 import tempfile
 from pathlib import Path
+
 import phasma.browser
 
 
@@ -25,18 +26,18 @@ async def render_page_content(input_content, output_path=None, viewport="1024x76
         page = await browser.new_page()
 
         # Set viewport size
-        width, height = map(int, viewport.split('x'))
+        width, height = map(int, viewport.split("x"))
         await page.set_viewport_size(width, height)
 
         # Read HTML content
         input_path = Path(input_content)
         if input_path.is_file():
-            html_content = input_path.read_text(encoding='utf-8')
+            html_content = input_path.read_text(encoding="utf-8")
         else:
             html_content = input_content
 
         # Create a temporary HTML file with the content and navigate to it
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.html', delete=False, encoding='utf-8') as temp_file:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".html", delete=False, encoding="utf-8") as temp_file:
             temp_file.write(html_content)
             temp_html_path = temp_file.name
 
@@ -53,7 +54,7 @@ async def render_page_content(input_content, output_path=None, viewport="1024x76
             if not output_path:
                 return rendered
             else:
-                Path(output_path).write_text(rendered, encoding='utf-8')
+                Path(output_path).write_text(rendered, encoding="utf-8")
 
         finally:
             # Clean up the temporary file
@@ -82,7 +83,7 @@ async def render_url_content(url, output_path=None, viewport="1024x768", wait=0)
         page = await browser.new_page()
 
         # Set viewport size
-        width, height = map(int, viewport.split('x'))
+        width, height = map(int, viewport.split("x"))
         await page.set_viewport_size(width, height)
 
         # Navigate to URL
@@ -95,7 +96,7 @@ async def render_url_content(url, output_path=None, viewport="1024x768", wait=0)
         if not output_path:
             return rendered
         else:
-            Path(output_path).write_text(rendered, encoding='utf-8')
+            Path(output_path).write_text(rendered, encoding="utf-8")
 
     finally:
         await browser.close()
@@ -142,7 +143,7 @@ async def take_screenshot(url, output_path, viewport="1024x768", wait=100):
         page = await browser.new_page()
 
         # Set viewport size
-        width, height = map(int, viewport.split('x'))
+        width, height = map(int, viewport.split("x"))
         await page.set_viewport_size(width, height)
 
         # Navigate to URL
@@ -175,7 +176,7 @@ async def generate_pdf(url, output_path, format="A4", landscape=False, margin="1
         page = await browser.new_page()
 
         # Set viewport size
-        width, height = map(int, viewport.split('x'))
+        width, height = map(int, viewport.split("x"))
         await page.set_viewport_size(width, height)
 
         # Navigate to URL
