@@ -197,22 +197,3 @@ async def test_element_interaction():
         Path(temp_html_path).unlink()
         await browser.close()
 
-
-if __name__ == "__main__":
-    # Run the tests manually if executed as a script
-    async def run_tests():
-        await test_basic_browser_launch()
-        print("Basic browser launch test passed!")
-        
-        await test_screenshot()
-        print("Screenshot test passed!")
-        
-        await test_pdf_generation()
-        print("PDF generation test passed!")
-        
-        await test_element_interaction()
-        print("Element interaction test passed!")
-        
-        print("All tests passed!")
-    
-    asyncio.run(run_tests())
