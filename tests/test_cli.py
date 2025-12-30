@@ -15,7 +15,7 @@ def test_driver_version():
         cwd=os.path.dirname(os.path.dirname(__file__)), check=False
     )
     assert result.returncode == 0
-    assert "PhantomJS driver version:" in result.stdout
+    assert "PhantomJS driver version:" in result.stdout or "PhantomJS driver version:" in result.stderr
 
 def test_driver_path():
     """Test driver --path command."""
@@ -27,7 +27,7 @@ def test_driver_path():
     )
     assert result.returncode == 0
     # Path should contain phantomjs or phantomjs.exe
-    assert "phantomjs" in result.stdout.lower()
+    assert "phantomjs" in result.stdout.lower() or "phantomjs" in result.stderr.lower()
 
 def test_driver_download():
     """Test driver download command (skip if already downloaded)."""

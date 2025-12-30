@@ -163,7 +163,7 @@ Examples:
             wait=args.wait
         )
         if result:
-            print(result)  # Keep print for output content to stdout
+            sys.stdout.write(result)  # Use sys.stdout.write for output content to stdout
 
     elif args.command == "render-url":
         # Use the function from phasma module
@@ -174,7 +174,7 @@ Examples:
             wait=args.wait
         )
         if result:
-            print(result)  # Keep print for output content to stdout
+            sys.stdout.write(result)  # Use sys.stdout.write for output content to stdout
 
     elif args.command == "execjs":
         # Use the function from phasma module
@@ -183,7 +183,7 @@ Examples:
         else:
             script = args.script
         result = phasma.sync_execute_js_script(script)
-        print(result)  # Keep print for output content to stdout
+        sys.stdout.write(result)  # Use sys.stdout.write for output content to stdout
 
     elif args.command == "screenshot":
         # Use the function from phasma module
