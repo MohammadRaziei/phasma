@@ -11,13 +11,13 @@ import phasma.browser
 async def render_page_content(input_content, output_path=None, viewport="1024x768", wait=100):
     """
     Render HTML content using PhantomJS.
-    
+
     Args:
         input_content: Either a file path or HTML string to render
         output_path: Optional output file path (if None, returns content as string)
         viewport: Viewport size as WIDTHxHEIGHT (default: 1024x768)
         wait: Wait time in milliseconds after page load (default: 100)
-    
+
     Returns:
         Rendered content as string if no output_path provided, otherwise None
     """
@@ -33,8 +33,8 @@ async def render_page_content(input_content, output_path=None, viewport="1024x76
         # Only treat as file if it looks like a file path and exists
         is_potential_file_path = (
             len(input_content) < 1000  # Reasonable length for a file path
-            and (input_content.startswith('.') or '/' in input_content or '\\' in input_content)
-            and not input_content.strip().startswith('<')  # Doesn't look like HTML
+            and (input_content.startswith(".") or "/" in input_content or "\\" in input_content)
+            and not input_content.strip().startswith("<")  # Doesn't look like HTML
         )
 
         if is_potential_file_path:
@@ -83,13 +83,13 @@ async def render_page_content(input_content, output_path=None, viewport="1024x76
 async def render_url_content(url, output_path=None, viewport="1024x768", wait=0):
     """
     Render a URL using PhantomJS.
-    
+
     Args:
         url: URL to render
         output_path: Optional output file path (if None, returns content as string)
         viewport: Viewport size as WIDTHxHEIGHT (default: 1024x768)
         wait: Wait time in milliseconds after page load (default: 0)
-    
+
     Returns:
         Rendered content as string if no output_path provided, otherwise None
     """
@@ -146,7 +146,7 @@ async def execute_js_script(script, url="about:blank"):
 async def take_screenshot(url, output_path, viewport="1024x768", wait=100):
     """
     Take a screenshot of a webpage.
-    
+
     Args:
         url: URL to take screenshot of
         output_path: Output file path for the screenshot
@@ -176,7 +176,7 @@ async def take_screenshot(url, output_path, viewport="1024x768", wait=100):
 async def generate_pdf(url, output_path, format="A4", landscape=False, margin="1cm", viewport="1024x768", wait=100):
     """
     Generate a PDF from a webpage.
-    
+
     Args:
         url: URL to generate PDF from
         output_path: Output file path for the PDF

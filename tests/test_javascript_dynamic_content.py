@@ -24,7 +24,7 @@ class TestJavaScriptDynamicContent:
         """
 
         # With short wait, might still get initial content or updated content depending on execution speed
-        result_short = asyncio.run(
+        asyncio.run(
             phasma.render_page_content(html_content, wait=50)
         )
 
@@ -154,11 +154,11 @@ class TestJavaScriptDynamicContent:
             <script>
                 let count = 0;
                 const counterEl = document.getElementById('counter');
-                
+
                 const interval = setInterval(() => {
                     count++;
                     counterEl.innerHTML = count;
-                    
+
                     if (count >= 5) {
                         clearInterval(interval);
                     }
@@ -187,7 +187,7 @@ class TestJavaScriptDynamicContent:
                 document.getElementById('clickBtn').addEventListener('click', () => {
                     document.getElementById('output').innerHTML = 'Button was clicked!';
                 });
-                
+
                 // Simulate click
                 setTimeout(() => {
                     document.getElementById('clickBtn').click();
@@ -247,19 +247,19 @@ class TestJavaScriptDynamicContent:
             <main id="content">Home Page</main>
             <script>
                 const content = document.getElementById('content');
-                
+
                 document.getElementById('home').addEventListener('click', () => {
                     content.innerHTML = 'Home Page';
                 });
-                
+
                 document.getElementById('about').addEventListener('click', () => {
                     content.innerHTML = 'About Us Page';
                 });
-                
+
                 document.getElementById('contact').addEventListener('click', () => {
                     content.innerHTML = 'Contact Page';
                 });
-                
+
                 // Simulate navigation sequence
                 setTimeout(() => document.getElementById('about').click(), 100);
                 setTimeout(() => document.getElementById('contact').click(), 200);

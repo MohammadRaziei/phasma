@@ -20,26 +20,26 @@ async def form_interaction_example():
         <form id="test-form">
             <label for="name">Name:</label>
             <input type="text" id="name" name="name" placeholder="Enter your name"><br><br>
-            
+
             <label for="email">Email:</label>
             <input type="email" id="email" name="email" placeholder="Enter your email"><br><br>
-            
+
             <label for="message">Message:</label>
             <textarea id="message" name="message" placeholder="Enter your message"></textarea><br><br>
-            
+
             <button type="submit">Submit</button>
         </form>
-        
+
         <div id="result"></div>
-        
+
         <script>
             document.getElementById('test-form').addEventListener('submit', function(e) {
                 e.preventDefault();
                 const name = document.getElementById('name').value;
                 const email = document.getElementById('email').value;
                 const message = document.getElementById('message').value;
-                
-                document.getElementById('result').innerHTML = 
+
+                document.getElementById('result').innerHTML =
                     '<h3>Form Submitted!</h3>' +
                     '<p>Name: ' + name + '</p>' +
                     '<p>Email: ' + email + '</p>' +

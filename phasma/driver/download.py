@@ -56,7 +56,8 @@ def sha256(path: Path) -> str:
 def detect_target(os_name: str, arch: str, version: str):
     key = (os_name, arch, version)
     if key not in FILES:
-        raise RuntimeError(f"Unsupported platform/version: {key}")
+        msg = f"Unsupported platform/version: {key}"
+        raise RuntimeError(msg)
     return FILES[key]
 
 
@@ -73,14 +74,16 @@ def extract(archive: Path, dst: Path):
         with tarfile.open(archive) as t:
             t.extractall(dst)
     else:
-        raise RuntimeError("Unknown archive format")
+        msg = "Unknown archive format"
+        raise RuntimeError(msg)
 
 
 def find_binary(root: Path) -> Path:
     for p in root.rglob("phantomjs*"):
         if p.is_file() and os.access(p, os.X_OK):
             return p
-    raise RuntimeError("phantomjs binary not found")
+    msg = "phantomjs binary not found"
+    raise RuntimeError(msg)
 
 
 def download_and_extract(
@@ -110,7 +113,8 @@ def download_and_extract(
 
     logger.info("Verifying checksum")
     if sha256(archive) != checksum:
-        raise RuntimeError("Checksum mismatch")
+        msg = "Checksum mismatch"
+        raise RuntimeError(msg)
 
 
     if dest.exists():

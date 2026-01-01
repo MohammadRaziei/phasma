@@ -6,6 +6,7 @@ import tempfile
 import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Union
+
 from .driver import Driver
 
 
@@ -180,8 +181,9 @@ processCommands();
             # Check if the process is still alive
             if self._process.poll() is not None:
                 # Process has exited, get any error output
-                stderr_output = self._process.stderr.read() if hasattr(self._process.stderr, 'read') else ''
-                raise RuntimeError(f"Persistent session process exited early. STDERR: {stderr_output}")
+                stderr_output = self._process.stderr.read() if hasattr(self._process.stderr, "read") else ""
+                msg = f"Persistent session process exited early. STDERR: {stderr_output}"
+                raise RuntimeError(msg)
 
             # Try to read the output
             try:
@@ -196,7 +198,8 @@ processCommands();
                 continue
 
         if not ready_received:
-            raise RuntimeError("Persistent session failed to start properly - no READY message received within timeout")
+            msg = "Persistent session failed to start properly - no READY message received within timeout"
+            raise RuntimeError(msg)
 
     def send_command(self, action: str, params: Optional[Dict] = None, timeout: float = 60.0) -> Any:
         """
@@ -211,10 +214,12 @@ processCommands();
             The result of the command
         """
         if self._process is None or self._process.poll() is not None:
-            raise RuntimeError("Persistent session not started or already closed")
+            msg = "Persistent session not started or already closed"
+            raise RuntimeError(msg)
 
         if self._is_closed:
-            raise RuntimeError("Driver has been closed")
+            msg = "Driver has been closed"
+            raise RuntimeError(msg)
 
         command = {
             "action": action,
@@ -222,7 +227,7 @@ processCommands();
         }
 
         # Write command to the command file
-        with open(self._command_file.name, 'w') as f:
+        with open(self._command_file.name, "w") as f:
             f.write(json.dumps(command))
 
         # Wait for response with timeout
@@ -230,18 +235,19 @@ processCommands();
         while time.time() - start_time < timeout:
             # Check if response file has content
             try:
-                with open(self._response_file.name, 'r') as f:
+                with open(self._response_file.name) as f:
                     response_content = f.read().strip()
 
                 if response_content:
                     # Clear the response file for next use
-                    with open(self._response_file.name, 'w') as f:
-                        f.write('')
+                    with open(self._response_file.name, "w") as f:
+                        f.write("")
 
                     result = json.loads(response_content)
 
                     if result["type"] == "error":
-                        raise RuntimeError(f"PhantomJS error: {result['message']}")
+                        msg = f"PhantomJS error: {result['message']}"
+                        raise RuntimeError(msg)
                     elif result["type"] == "result":
                         return result["data"]
             except json.JSONDecodeError:
@@ -252,7 +258,8 @@ processCommands();
             # Small delay to prevent busy waiting
             time.sleep(0.05)
 
-        raise TimeoutError(f"Command '{action}' timed out after {timeout} seconds")
+        msg = f"Command '{action}' timed out after {timeout} seconds"
+        raise TimeoutError(msg)
 
     def exec(
         self,
@@ -278,7 +285,7 @@ processCommands();
             args_list = list(args)
 
         # Check if any argument is a JavaScript file (temporary script)
-        has_js_file = any(arg.endswith('.js') for arg in args_list)
+        has_js_file = any(arg.endswith(".js") for arg in args_list)
 
         if has_js_file:
             # For script files, fall back to the original implementation
@@ -326,7 +333,8 @@ processCommands();
                     # This is a simplified implementation - a full implementation would need
                     # to parse PhantomJS command line arguments and convert them to appropriate
                     # persistent session commands
-                    raise NotImplementedError(f"Command '{args}' not supported in persistent mode. Use specific methods like navigate(), evaluate(), etc.")
+                    msg = f"Command '{args}' not supported in persistent mode. Use specific methods like navigate(), evaluate(), etc."
+                    raise NotImplementedError(msg)
             else:
                 # Handle sequence of args
                 args_list = list(args)
@@ -348,7 +356,8 @@ processCommands();
                         **kwargs,
                     )
                 else:
-                    raise NotImplementedError(f"Command '{args}' not supported in persistent mode. Use specific methods like navigate(), evaluate(), etc.")
+                    msg = f"Command '{args}' not supported in persistent mode. Use specific methods like navigate(), evaluate(), etc."
+                    raise NotImplementedError(msg)
 
     def navigate(self, url: str, timeout: float = 60.0) -> str:
         """Navigate to a URL using the persistent session."""
@@ -395,12 +404,12 @@ processCommands();
         self._is_closed = True
         self._process = None
         # Close file handles if they exist
-        if hasattr(self, '_command_file') and self._command_file:
+        if hasattr(self, "_command_file") and self._command_file:
             try:
                 self._command_file.close()
             except:
                 pass
-        if hasattr(self, '_response_file') and self._response_file:
+        if hasattr(self, "_response_file") and self._response_file:
             try:
                 self._response_file.close()
             except:

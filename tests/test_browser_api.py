@@ -20,7 +20,6 @@ async def test_basic_browser_launch():
     # Test that we can navigate to a simple URL
     # Using a data URL for testing without external dependencies
     html_content = "<html><body><h1>Test Page</h1></body></html>"
-    data_url = f"data:text/html,{html_content}"
 
     # For PhantomJS, data URLs might not work, so let's create a temporary HTML file
     with tempfile.NamedTemporaryFile(mode="w", suffix=".html", delete=False) as f:
@@ -188,7 +187,7 @@ async def test_element_interaction():
         await asyncio.sleep(0.2)  # Simple sleep instead of proper wait
 
         # Check the result
-        result_text = await page.text_content("#result")
+        await page.text_content("#result")
         # Note: PhantomJS might not execute the JavaScript as expected in this context
         # This test might need adjustment based on actual PhantomJS behavior
 

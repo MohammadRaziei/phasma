@@ -37,7 +37,8 @@ class bdist_wheel_custom(bdist_wheel):
         success = download_driver(dest=dest, os_name=os_name, arch=arch)
         if not success:
             logger.error("Download Failed")
-            raise RuntimeError("Download Failed")
+            msg = "Download Failed"
+            raise RuntimeError(msg)
         bin_path = dest / "phantomjs" / "bin"
         logger.info("Downloading is successful and %s %s", bin_path, "exists" if bin_path.exists() else "doesn't exist")
         super().run()

@@ -83,7 +83,8 @@ class Page:
         # Use persistent driver
         success = self._driver.click(selector, timeout=60.0)
         if not success:
-            raise Error(f"Element with selector '{selector}' not found")
+            msg = f"Element with selector '{selector}' not found"
+            raise Error(msg)
 
     async def fill(self, selector: str, value: str):
         """
@@ -96,7 +97,8 @@ class Page:
         # Use persistent driver
         success = self._driver.fill(selector, value, timeout=60.0)
         if not success:
-            raise Error(f"Element with selector '{selector}' not found")
+            msg = f"Element with selector '{selector}' not found"
+            raise Error(msg)
 
     async def text_content(self, selector: str) -> str:
         """
@@ -117,7 +119,8 @@ class Page:
         """
         result = self._driver.evaluate(expression, timeout=60.0)
         if result is None:
-            raise Error(f"Element with selector '{selector}' not found")
+            msg = f"Element with selector '{selector}' not found"
+            raise Error(msg)
         return result
 
     async def inner_html(self, selector: str) -> str:
@@ -139,7 +142,8 @@ class Page:
         """
         result = self._driver.evaluate(expression, timeout=60.0)
         if result is None:
-            raise Error(f"Element with selector '{selector}' not found")
+            msg = f"Element with selector '{selector}' not found"
+            raise Error(msg)
         return result
 
     async def screenshot(self, path: Union[str, Path], full_page: bool = False, type: str = "png", quality: int = 100) -> bytes:
@@ -216,7 +220,8 @@ class Page:
         result = self._run_phantomjs_script(script)
         if result.returncode != 0:
             error_msg = result.stderr.decode().strip() if result.stderr else "Unknown error"
-            raise Error(f"PDF generation failed: {error_msg}")
+            msg = f"PDF generation failed: {error_msg}"
+            raise Error(msg)
 
         # Read the saved PDF file and return as bytes
         with open(path, "rb") as f:
@@ -245,7 +250,8 @@ class Page:
         """
         result = self._driver.evaluate(full_expression, timeout=60.0)
         if result is None:
-            raise Error(f"Element with selector '{selector}' not found")
+            msg = f"Element with selector '{selector}' not found"
+            raise Error(msg)
         return result
 
     async def evaluate(self, expression: str) -> Any:
@@ -371,11 +377,11 @@ class Browser:
         for context in self._contexts:
             await context.close()
         self._contexts.clear()
-        
+
         # If using persistent driver, close it properly
-        if hasattr(self._driver, 'close'):
+        if hasattr(self._driver, "close"):
             self._driver.close()
-        
+
         self._is_closed = True
 
     def is_connected(self) -> bool:
