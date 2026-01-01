@@ -10,6 +10,9 @@ from .browser import (
     launch,
 )
 
+# Import driver classes
+from .driver import Driver, DriverPersistent
+
 # Import utility functions
 from .phasma import (
     execute_js_script,
@@ -33,6 +36,8 @@ __all__ = [
     "ElementHandle",
     "Error",
     "TimeoutError",
+    "Driver",
+    "DriverPersistent",
     # Utility functions
     "render_page_content",
     "render_url_content",

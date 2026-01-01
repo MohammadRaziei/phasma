@@ -1,5 +1,5 @@
 """
-Playwright-like API for phasma.
+Playwright-like API for phasma with persistent driver support.
 This module provides a modern API similar to Playwright for PhantomJS automation.
 """
 import json
@@ -8,7 +8,7 @@ import tempfile
 from pathlib import Path
 from typing import Any, Dict, Optional, Union
 
-from .driver import Driver
+from .driver import DriverPersistent
 
 
 def _escape_js_string(s):
@@ -40,7 +40,6 @@ class Page:
         self._page_id = page_id
         self._url = None
         self._viewport_size = {"width": 1024, "height": 768}
-        self._page_instance = None  # Will store the PhantomJS process when needed
 
     async def goto(self, url: str, wait_until: str = "load", timeout: int = 30000) -> Optional[str]:
         """
@@ -54,30 +53,8 @@ class Page:
         Returns:
             HTML content of the page after navigation
         """
-        script = f"""
-        var page = require('webpage').create();
-        page.viewportSize = {{ width: {self._viewport_size['width']}, height: {self._viewport_size['height']} }};
-        page.settings.javascriptEnabled = true;
-        page.settings.localToRemoteUrlAccess = true;
-
-        page.open('{_escape_js_string(url)}', function(status) {{
-            if (status === 'success') {{
-                window.setTimeout(function() {{
-                    var result = page.evaluate(function() {{
-                        return document.documentElement.outerHTML;
-                    }});
-                    console.log(result);
-                    phantom.exit();
-                }}, 100);  // Wait 100ms for JS to execute
-            }} else {{
-                console.error('Failed to load URL');
-                phantom.exit(1);
-            }}
-        }});
-        """
-
-        result = self._run_phantomjs_script(script)
-        content = result.stdout.decode().strip() if result.stdout else ""
+        # Use persistent driver
+        content = self._driver.navigate(url, timeout=timeout/1000.0)
         self._url = url
         return content
 
@@ -99,192 +76,71 @@ class Page:
     async def click(self, selector: str):
         """
         Click an element matching the selector.
-        
+
         Args:
             selector: CSS selector for the element to click
         """
-        script = f"""
-        var page = require('webpage').create();
-        page.viewportSize = {{ width: {self._viewport_size['width']}, height: {self._viewport_size['height']} }};
-        page.settings.javascriptEnabled = true;
-        page.settings.localToRemoteUrlAccess = true;
-        
-        page.open('{_escape_js_string(self._url)}', function(status) {{
-            if (status === 'success') {{
-                window.setTimeout(function() {{
-                    var element = page.evaluate(function(sel) {{
-                        var el = document.querySelector(sel);
-                        if (el) {{
-                            var event = document.createEvent('MouseEvent');
-                            event.initMouseEvent('click', true, true, window, 0, 0, 0, 0, 0, false, false, false, false, 0, null);
-                            el.dispatchEvent(event);
-                            return true;
-                        }}
-                        return false;
-                    }}, '{_escape_js_string(selector)}');
-
-                    if (element) {{
-                        console.log('Clicked element');
-                    }} else {{
-                        console.error('Element not found');
-                    }}
-                    phantom.exit();
-                }}, 100);
-            }} else {{
-                console.error('Failed to load URL');
-                phantom.exit(1);
-            }}
-        }});
-        """
-
-        result = self._run_phantomjs_script(script)
-        if result.returncode != 0:
-            error_msg = result.stderr.decode().strip() if result.stderr else "Unknown error"
-            raise Error(f"Click failed: {error_msg}")
+        # Use persistent driver
+        success = self._driver.click(selector, timeout=60.0)
+        if not success:
+            raise Error(f"Element with selector '{selector}' not found")
 
     async def fill(self, selector: str, value: str):
         """
         Fill an input field with a value.
-        
+
         Args:
             selector: CSS selector for the input field
             value: Value to fill in the field
         """
-        script = f"""
-        var page = require('webpage').create();
-        page.viewportSize = {{ width: {self._viewport_size['width']}, height: {self._viewport_size['height']} }};
-        page.settings.javascriptEnabled = true;
-        page.settings.localToRemoteUrlAccess = true;
-        
-        page.open('{_escape_js_string(self._url)}', function(status) {{
-            if (status === 'success') {{
-                window.setTimeout(function() {{
-                    var success = page.evaluate(function(sel, val) {{
-                        var el = document.querySelector(sel);
-                        if (el) {{
-                            el.value = val;
-                            // Trigger input and change events
-                            var inputEvent = document.createEvent('Event');
-                            inputEvent.initEvent('input', true, true);
-                            el.dispatchEvent(inputEvent);
-
-                            var changeEvent = document.createEvent('Event');
-                            changeEvent.initEvent('change', true, true);
-                            el.dispatchEvent(changeEvent);
-
-                            return true;
-                        }}
-                        return false;
-                    }}, '{_escape_js_string(selector)}', '{_escape_js_string(value)}');
-
-                    if (success) {{
-                        console.log('Filled element');
-                    }} else {{
-                        console.error('Element not found');
-                    }}
-                    phantom.exit();
-                }}, 100);
-            }} else {{
-                console.error('Failed to load URL');
-                phantom.exit(1);
-            }}
-        }});
-        """
-
-        result = self._run_phantomjs_script(script)
-        if result.returncode != 0:
-            error_msg = result.stderr.decode().strip() if result.stderr else "Unknown error"
-            raise Error(f"Fill failed: {error_msg}")
+        # Use persistent driver
+        success = self._driver.fill(selector, value, timeout=60.0)
+        if not success:
+            raise Error(f"Element with selector '{selector}' not found")
 
     async def text_content(self, selector: str) -> str:
         """
         Get the text content of an element.
-        
+
         Args:
             selector: CSS selector for the element
-            
+
         Returns:
             Text content of the element
         """
-        script = f"""
-        var page = require('webpage').create();
-        page.viewportSize = {{ width: {self._viewport_size['width']}, height: {self._viewport_size['height']} }};
-        page.settings.javascriptEnabled = true;
-        page.settings.localToRemoteUrlAccess = true;
-        
-        page.open('{_escape_js_string(self._url)}', function(status) {{
-            if (status === 'success') {{
-                window.setTimeout(function() {{
-                    var text = page.evaluate(function(sel) {{
-                        var el = document.querySelector(sel);
-                        return el ? el.textContent : null;
-                    }}, '{_escape_js_string(selector)}');
-
-                    if (text !== null) {{
-                        console.log(text);
-                    }} else {{
-                        console.error('Element not found');
-                    }}
-                    phantom.exit();
-                }}, 100);
-            }} else {{
-                console.error('Failed to load URL');
-                phantom.exit(1);
-            }}
-        }});
+        # Use evaluate to get text content
+        expression = f"""
+        (function() {{
+            var el = document.querySelector('{_escape_js_string(selector)}');
+            return el ? el.textContent : null;
+        }})()
         """
-
-        result = self._run_phantomjs_script(script)
-        if result.returncode != 0:
-            error_msg = result.stderr.decode().strip() if result.stderr else "Unknown error"
-            raise Error(f"Get text content failed: {error_msg}")
-
-        return result.stdout.decode().strip() if result.stdout else ""
+        result = self._driver.evaluate(expression, timeout=60.0)
+        if result is None:
+            raise Error(f"Element with selector '{selector}' not found")
+        return result
 
     async def inner_html(self, selector: str) -> str:
         """
         Get the inner HTML of an element.
-        
+
         Args:
             selector: CSS selector for the element
-            
+
         Returns:
             Inner HTML of the element
         """
-        script = f"""
-        var page = require('webpage').create();
-        page.viewportSize = {{ width: {self._viewport_size['width']}, height: {self._viewport_size['height']} }};
-        page.settings.javascriptEnabled = true;
-        page.settings.localToRemoteUrlAccess = true;
-        
-        page.open('{_escape_js_string(self._url)}', function(status) {{
-            if (status === 'success') {{
-                window.setTimeout(function() {{
-                    var html = page.evaluate(function(sel) {{
-                        var el = document.querySelector(sel);
-                        return el ? el.innerHTML : null;
-                    }}, '{_escape_js_string(selector)}');
-
-                    if (html !== null) {{
-                        console.log(html);
-                    }} else {{
-                        console.error('Element not found');
-                    }}
-                    phantom.exit();
-                }}, 100);
-            }} else {{
-                console.error('Failed to load URL');
-                phantom.exit(1);
-            }}
-        }});
+        # Use evaluate to get inner HTML
+        expression = f"""
+        (function() {{
+            var el = document.querySelector('{_escape_js_string(selector)}');
+            return el ? el.innerHTML : null;
+        }})()
         """
-
-        result = self._run_phantomjs_script(script)
-        if result.returncode != 0:
-            error_msg = result.stderr.decode().strip() if result.stderr else "Unknown error"
-            raise Error(f"Get inner HTML failed: {error_msg}")
-
-        return result.stdout.decode().strip() if result.stdout else ""
+        result = self._driver.evaluate(expression, timeout=60.0)
+        if result is None:
+            raise Error(f"Element with selector '{selector}' not found")
+        return result
 
     async def screenshot(self, path: Union[str, Path], full_page: bool = False, type: str = "png", quality: int = 100) -> bytes:
         """
@@ -299,36 +155,10 @@ class Page:
         Returns:
             Screenshot as bytes
         """
-        # PhantomJS screenshots are saved as image files, so we'll save to the specified path
-        # and return the bytes
         path = Path(path)
 
-        # Create a temporary script to take the screenshot
-        script = f"""
-        var page = require('webpage').create();
-        page.viewportSize = {{ width: {self._viewport_size['width']}, height: {self._viewport_size['height']} }};
-        page.settings.javascriptEnabled = true;
-        page.settings.localToRemoteUrlAccess = true;
-
-        page.open('{self._url}', function(status) {{
-            if (status === 'success') {{
-                window.setTimeout(function() {{
-                    page.render('{_escape_js_string(path)}');
-                    console.log('Screenshot saved');
-                    phantom.exit();
-                }}, 100);
-            }} else {{
-                console.error('Failed to load URL');
-                phantom.exit(1);
-            }}
-        }});
-        """
-
-        result = self._run_phantomjs_script(script)
-        if result.returncode != 0:
-            error_msg = result.stderr.decode().strip() if result.stderr else "Unknown error"
-            raise Error(f"Screenshot failed: {error_msg}")
-
+        # Use persistent driver
+        self._driver.take_screenshot(path, timeout=60.0)
         # Read the saved image file and return as bytes
         with open(path, "rb") as f:
             return f.read()
@@ -395,57 +225,28 @@ class Page:
     async def eval_on_selector(self, selector: str, expression: str) -> Any:
         """
         Execute a JavaScript expression on the first element matching the selector.
-        
+
         Args:
             selector: CSS selector for the element
             expression: JavaScript expression to evaluate
-            
+
         Returns:
             Result of the JavaScript expression
         """
-        script = f"""
-        var page = require('webpage').create();
-        page.viewportSize = {{ width: {self._viewport_size['width']}, height: {self._viewport_size['height']} }};
-        page.settings.javascriptEnabled = true;
-        page.settings.localToRemoteUrlAccess = true;
-        
-        page.open('{_escape_js_string(self._url)}', function(status) {{
-            if (status === 'success') {{
-                window.setTimeout(function() {{
-                    var result = page.evaluate(function(sel, expr) {{
-                        var el = document.querySelector(sel);
-                        if (el) {{
-                            return eval('(function(){{ return ' + expr + '; }}).call(el)');
-                        }}
-                        return null;
-                    }}, '{_escape_js_string(selector)}', '{_escape_js_string(expression)}');
-
-                    if (result !== null) {{
-                        console.log(JSON.stringify(result));
-                    }} else {{
-                        console.error('Element not found');
-                    }}
-                    phantom.exit();
-                }}, 100);
-            }} else {{
-                console.error('Failed to load URL');
-                phantom.exit(1);
+        # Use evaluate to execute expression on selector
+        full_expression = f"""
+        (function() {{
+            var el = document.querySelector('{_escape_js_string(selector)}');
+            if (el) {{
+                return (function(){{ return {expression}; }}).call(el);
             }}
-        }});
+            return null;
+        }})()
         """
-
-        result = self._run_phantomjs_script(script)
-        if result.returncode != 0:
-            error_msg = result.stderr.decode().strip() if result.stderr else "Unknown error"
-            raise Error(f"Eval on selector failed: {error_msg}")
-
-        output = result.stdout.decode().strip() if result.stdout else ""
-        if output:
-            try:
-                return json.loads(output)
-            except json.JSONDecodeError:
-                return output
-        return None
+        result = self._driver.evaluate(full_expression, timeout=60.0)
+        if result is None:
+            raise Error(f"Element with selector '{selector}' not found")
+        return result
 
     async def evaluate(self, expression: str) -> Any:
         """
@@ -457,126 +258,27 @@ class Page:
         Returns:
             Result of the JavaScript expression
         """
-        # For navigation-dependent operations, we should use the existing page
-        # rather than creating a new one each time
-        script = f"""
-        var page = require('webpage').create();
-        page.viewportSize = {{ width: {self._viewport_size['width']}, height: {self._viewport_size['height']} }};
-        page.settings.javascriptEnabled = true;
-        page.settings.localToRemoteUrlAccess = true;
-
-        page.open('{_escape_js_string(self._url)}', function(status) {{
-            if (status === 'success') {{
-                window.setTimeout(function() {{
-                    var result = page.evaluate(function() {{
-                        return {expression};
-                    }});
-
-                    console.log(JSON.stringify(result));
-                    phantom.exit();
-                }}, 100);
-            }} else {{
-                console.error('Failed to load URL');
-                phantom.exit(1);
-            }}
-        }});
-        """
-
-        result = self._run_phantomjs_script(script)
-        if result.returncode != 0:
-            error_msg = result.stderr.decode().strip() if result.stderr else "Unknown error"
-            raise Error(f"Evaluate failed: {error_msg}")
-
-        output = result.stdout.decode().strip() if result.stdout else ""
-        if output:
-            try:
-                return json.loads(output)
-            except json.JSONDecodeError:
-                return output
-        return None
-
-    async def _evaluate_on_existing_page(self, expression: str) -> Any:
-        """
-        Execute a JavaScript expression on the current page (not a new instance).
-        This is used for operations that should run on an already loaded page.
-        """
-        # Create a temporary script file to execute the expression
-        script_content = f"""
-        var page = require('webpage').create();
-        page.viewportSize = {{ width: {self._viewport_size['width']}, height: {self._viewport_size['height']} }};
-        page.settings.javascriptEnabled = true;
-        page.settings.localToRemoteUrlAccess = true;
-
-        page.open('{_escape_js_string(self._url)}', function(status) {{
-            if (status === 'success') {{
-                window.setTimeout(function() {{
-                    var result = page.evaluate(function() {{
-                        return {expression};
-                    }});
-                    console.log(JSON.stringify(result));
-                    phantom.exit();
-                }}, 100);
-            }} else {{
-                console.error('Failed to load URL');
-                phantom.exit(1);
-            }}
-        }});
-        """
-
-        result = self._run_phantomjs_script(script_content)
-        if result.returncode != 0:
-            error_msg = result.stderr.decode().strip() if result.stderr else "Unknown error"
-            raise Error(f"Evaluate failed: {error_msg}")
-
-        output = result.stdout.decode().strip() if result.stdout else ""
-        if output:
-            try:
-                return json.loads(output)
-            except json.JSONDecodeError:
-                return output
-        return None
+        return self._driver.evaluate(expression, timeout=60.0)
 
     async def wait_for_selector(self, selector: str, timeout: int = 30000) -> Optional["ElementHandle"]:
         """
         Wait for an element matching the selector to appear in the DOM.
-        
+
         Args:
             selector: CSS selector to wait for
             timeout: Maximum time to wait in milliseconds
-            
+
         Returns:
             ElementHandle if found, None otherwise
         """
-        # For simplicity, we'll just check if the element exists
-        script = f"""
-        var page = require('webpage').create();
-        page.viewportSize = {{ width: {self._viewport_size['width']}, height: {self._viewport_size['height']} }};
-        page.settings.javascriptEnabled = true;
-        page.settings.localToRemoteUrlAccess = true;
-        
-        page.open('{_escape_js_string(self._url)}', function(status) {{
-            if (status === 'success') {{
-                window.setTimeout(function() {{
-                    var exists = page.evaluate(function(sel) {{
-                        return document.querySelector(sel) !== null;
-                    }}, '{_escape_js_string(selector)}');
-
-                    if (exists) {{
-                        console.log('Element found');
-                    }} else {{
-                        console.error('Element not found');
-                    }}
-                    phantom.exit();
-                }}, 100);
-            }} else {{
-                console.error('Failed to load URL');
-                phantom.exit(1);
-            }}
-        }});
+        # Use evaluate to check if element exists
+        expression = f"""
+        (function() {{
+            return document.querySelector('{_escape_js_string(selector)}') !== null;
+        }})()
         """
-
-        result = self._run_phantomjs_script(script)
-        if result.returncode == 0 and result.stdout and b"Element found" in result.stdout:
+        exists = self._driver.evaluate(expression, timeout=60.0)
+        if exists:
             # Return a simple element handle
             return ElementHandle(self, selector)
         else:
@@ -585,7 +287,7 @@ class Page:
     async def set_viewport_size(self, width: int, height: int):
         """
         Set the viewport size.
-        
+
         Args:
             width: Width in pixels
             height: Height in pixels
@@ -645,7 +347,7 @@ class BrowserContext:
 class Browser:
     """Represents a browser instance."""
 
-    def __init__(self, driver: Driver, browser_id: str, options: Optional[Dict] = None):
+    def __init__(self, driver: DriverPersistent, browser_id: str, options: Optional[Dict] = None):
         self._driver = driver
         self._browser_id = browser_id
         self._options = options or {}
@@ -666,11 +368,14 @@ class Browser:
 
     async def close(self):
         """Close the browser."""
-        # In PhantomJS, we don't have persistent browser processes like Playwright,
-        # so this is more of a cleanup operation
         for context in self._contexts:
             await context.close()
         self._contexts.clear()
+        
+        # If using persistent driver, close it properly
+        if hasattr(self._driver, 'close'):
+            self._driver.close()
+        
         self._is_closed = True
 
     def is_connected(self) -> bool:
@@ -681,14 +386,17 @@ class Browser:
 async def launch(options: Optional[Dict] = None) -> Browser:
     """
     Launch a new browser instance.
-    
+
     Args:
         options: Browser launch options
-        
+
     Returns:
         Browser instance
     """
-    driver = Driver()
+    driver = DriverPersistent()
+    # Start the persistent session
+    driver.start_persistent_session()
+
     browser_id = "browser_1"  # Simple ID for now
     browser = Browser(driver, browser_id, options)
     return browser
@@ -698,10 +406,10 @@ async def connect(options: Optional[Dict] = None) -> Browser:
     """
     Connect to an existing browser instance.
     For PhantomJS, this is similar to launch since it doesn't maintain persistent processes.
-    
+
     Args:
         options: Browser connection options
-        
+
     Returns:
         Browser instance
     """
