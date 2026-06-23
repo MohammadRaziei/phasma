@@ -8,7 +8,7 @@ name = "phasma"
 version = "0.6.0"
 description = "A modern PhantomJS driver for Python with bundled binaries, providing headless browser automation, web page rendering, and JavaScript execution."
 readme = "README.md"
-requires-python = ">=3.4"
+requires-python = ">=3.10"
 license = {file = "LICENSE"}
 keywords = ["phantomjs", "headless-browser", "web-automation", "javascript", "web-scraping"]
 authors = [
@@ -29,7 +29,8 @@ classifiers = [
 
 [project.optional-dependencies]
 dev = [
-    "pytest-asyncio>=0.21.0",
+    "pytest>=7.0",
+    "pytest-asyncio>=0.23",
 ]
 
 [project.urls]
@@ -38,6 +39,14 @@ Issues = "https://github.com/mohammadraziei/phasma/issues"
 Documentation = "https://mohammadraziei.github.io/phasma" 
 
 
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["phasma*"]
+
+[tool.setuptools.package-data]
+"phasma.driver" = ["phantom_server.js"]
+"phasma.driver.phantomjs" = ["**/*"]
 
 [tool.black]
 target-version = ["py37"]
@@ -53,6 +62,7 @@ filterwarnings = [
     "ignore:(ast.Str|Attribute s|ast.NameConstant|ast.Num) is deprecated:DeprecationWarning:_pytest",  # Python 3.12
 ]
 testpaths = ["tests"]
+asyncio_mode = "auto"
 pythonpath = [
   "."
 ]
