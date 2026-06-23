@@ -1,421 +1,179 @@
-import asyncio
+"""
+DriverPersistent — wraps a long-lived PhantomJS process that exposes a tiny
+HTTP/JSON RPC server (phantom_server.js).  One process per Browser instance,
+reused for every page operation.
+
+Communication:
+    POST http://127.0.0.1:<port>/<action>
+    body:  JSON params
+    reply: {"ok": true,  "data": ...}
+         | {"ok": false, "error": "..."}
+"""
+
+from __future__ import annotations
+
 import json
 import os
 import subprocess
-import tempfile
 import time
+import urllib.error
+import urllib.request
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Sequence, Union
+from typing import Any, Optional, Sequence, Union
 
 from .driver import Driver
 
+# Path to the bundled JS server script
+_SERVER_JS = Path(__file__).with_name("phantom_server.js")
+
 
 class DriverPersistent(Driver):
-    """
-    A persistent driver that maintains a single PhantomJS process for multiple operations,
-    similar to Playwright's persistent context approach.
-    """
+    """Manages a persistent PhantomJS process and talks to it over HTTP."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
-        self._process = None
-        self._is_closed = False
-        self._temp_scripts = []
-        self._command_file = None
-        self._response_file = None
-        self._last_response_time = 0
+        self._process: Optional[subprocess.Popen] = None
+        self._port: Optional[int] = None
+        self._base_url: Optional[str] = None
+        self._is_closed: bool = False
 
-    def start_persistent_session(self, args: Optional[Sequence[str]] = None):
-        """
-        Start a persistent PhantomJS session that can handle multiple commands.
-        Uses file-based communication to avoid stdin/stdout issues.
-        """
+    # ── lifecycle ─────────────────────────────────────────────────────────────
+
+    def start_persistent_session(
+        self,
+        args: Optional[Sequence[str]] = None,
+        startup_timeout: float = 15.0,
+    ) -> None:
+        """Launch the PhantomJS server process and wait until it is ready."""
         if self._process is not None and self._process.poll() is None:
-            return  # Already running
+            return  # already running
 
-        # Create temporary files for command and response communication
-        self._command_file = tempfile.NamedTemporaryFile(mode="w+", delete=False, suffix=".cmd")
-        self._response_file = tempfile.NamedTemporaryFile(mode="w+", delete=False, suffix=".rsp")
-
-        self._temp_scripts.extend([self._command_file.name, self._response_file.name])
-
-        # Create a persistent script that reads commands from a file and writes responses to another file
-        persistent_script = f"""var page = require('webpage').create();
-var fs = require('fs');
-var system = require('system');
-
-page.viewportSize = {{ width: 1024, height: 768 }};
-page.settings.javascriptEnabled = true;
-page.settings.localToRemoteUrlAccess = true;
-
-// File-based communication
-var commandFile = '{self._command_file.name}';
-var responseFile = '{self._response_file.name}';
-
-// Output a ready message to indicate the process is listening
-console.log('READY');
-
-// Function to read and process commands
-function processCommands() {{
-    try {{
-        if (fs.exists(commandFile)) {{
-            var content = fs.read(commandFile);
-            if (content && content.trim() !== '') {{
-                var command = JSON.parse(content.trim());
-                var action = command.action;
-                var params = command.params || {{}};
-
-                // Clear the command file
-                fs.write(commandFile, '', 'w');
-
-                if (action === 'navigate') {{
-                    page.open(params.url, function(status) {{
-                        if (status === 'success') {{
-                            window.setTimeout(function() {{
-                                var content = page.evaluate(function() {{
-                                    return document.documentElement.outerHTML;
-                                }});
-                                var response = JSON.stringify({{ type: 'result', data: content }});
-                                fs.write(responseFile, response, 'w');
-                            }}, 100); // Small delay to ensure page is loaded
-                        }} else {{
-                            var response = JSON.stringify({{ type: 'error', message: 'Failed to load URL' }});
-                            fs.write(responseFile, response, 'w');
-                        }}
-                    }});
-                }} else if (action === 'evaluate') {{
-                    var result = page.evaluate(function(expression) {{
-                        return eval(expression);
-                    }}, params.expression);
-                    var response = JSON.stringify({{ type: 'result', data: result }});
-                    fs.write(responseFile, response, 'w');
-                }} else if (action === 'click') {{
-                    var success = page.evaluate(function(selector) {{
-                        var el = document.querySelector(selector);
-                        if (el) {{
-                            var event = document.createEvent('MouseEvent');
-                            event.initMouseEvent('click', true, true, window, 0, 0, 0, 0, 0, false, false, false, false, 0, null);
-                            el.dispatchEvent(event);
-                            return true;
-                        }}
-                        return false;
-                    }}, params.selector);
-                    var response = JSON.stringify({{ type: 'result', data: success }});
-                    fs.write(responseFile, response, 'w');
-                }} else if (action === 'fill') {{
-                    var success = page.evaluate(function(selector, value) {{
-                        var el = document.querySelector(selector);
-                        if (el) {{
-                            el.value = value;
-                            // Trigger input and change events
-                            var inputEvent = document.createEvent('Event');
-                            inputEvent.initEvent('input', true, true);
-                            el.dispatchEvent(inputEvent);
-
-                            var changeEvent = document.createEvent('Event');
-                            changeEvent.initEvent('change', true, true);
-                            el.dispatchEvent(changeEvent);
-
-                            return true;
-                        }}
-                        return false;
-                    }}, params.selector, params.value);
-                    var response = JSON.stringify({{ type: 'result', data: success }});
-                    fs.write(responseFile, response, 'w');
-                }} else if (action === 'screenshot') {{
-                    page.render(params.path);
-                    var response = JSON.stringify({{ type: 'result', data: 'Screenshot saved' }});
-                    fs.write(responseFile, response, 'w');
-                }} else if (action === 'close') {{
-                    phantom.exit();
-                }}
-            }}
-        }}
-    }} catch (e) {{
-        var response = JSON.stringify({{ type: 'error', message: e.message }});
-        fs.write(responseFile, response, 'w');
-    }}
-
-    // Schedule next check
-    setTimeout(processCommands, 50); // Check every 50ms
-}}
-
-// Start processing commands
-processCommands();
-
-// Keep the process alive by not exiting
-"""
-
-        # Write the persistent script to a temporary file
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".js", delete=False) as f:
-            f.write(persistent_script)
-            temp_script = f.name
-
-        self._temp_scripts.append(temp_script)
-
-        # Start the persistent PhantomJS process
-        # Set environment to avoid SSL configuration issues
         env = os.environ.copy()
-        env["OPENSSL_CONF"] = ""  # or "" to disable OpenSSL config
+        env["OPENSSL_CONF"] = ""  # suppress OpenSSL warnings
 
-        cmd = [str(self.bin_path), "--ssl-protocol=any", "--ignore-ssl-errors=true", temp_script]
+        cmd = [
+            str(self.bin_path),
+            "--ssl-protocol=any",
+            "--ignore-ssl-errors=true",
+            str(_SERVER_JS),
+            "0",            # port 0 → server picks a free port
+        ]
         if args:
-            cmd.extend(list(args))
+            cmd.extend(args)
 
         self._process = subprocess.Popen(
             cmd,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-            universal_newlines=True,
-            env=env
+            text=True,
+            env=env,
         )
 
-
-        # On Linux/Mac, we can use select, but on Windows we need a different approach
-        # For cross-platform compatibility, let's use a simple timeout approach
-        start_time = time.time()
-        ready_received = False
-
-        # Poll for the ready message
-        while time.time() - start_time < 10:  # 10 second timeout
-            # Check if the process is still alive
+        # Read the "READY <port>" line from stdout
+        deadline = time.monotonic() + startup_timeout
+        while time.monotonic() < deadline:
             if self._process.poll() is not None:
-                # Process has exited, get any error output
-                stderr_output = self._process.stderr.read() if hasattr(self._process.stderr, "read") else ""
-                msg = f"Persistent session process exited early. STDERR: {stderr_output}"
-                raise RuntimeError(msg)
+                stderr = self._process.stderr.read()
+                raise RuntimeError(
+                    f"PhantomJS exited during startup. stderr: {stderr}"
+                )
+            line = self._process.stdout.readline().strip()
+            if line.startswith("READY "):
+                self._port = int(line.split()[1])
+                self._base_url = f"http://127.0.0.1:{self._port}"
+                return
 
-            # Try to read the output
-            try:
-                # Use a small timeout to avoid blocking
-                ready_output = self._process.stdout.readline()
-                if "READY" in ready_output:
-                    ready_received = True
-                    break
-            except:
-                # If readline fails (e.g., due to buffering), continue
-                time.sleep(0.1)
-                continue
+        self._process.kill()
+        raise RuntimeError("PhantomJS did not become ready within timeout")
 
-        if not ready_received:
-            msg = "Persistent session failed to start properly - no READY message received within timeout"
-            raise RuntimeError(msg)
-
-    def send_command(self, action: str, params: Optional[Dict] = None, timeout: float = 60.0) -> Any:
-        """
-        Send a command to the persistent PhantomJS process via file-based communication.
-
-        Args:
-            action: The action to perform (e.g., 'navigate', 'evaluate', 'click')
-            params: Parameters for the action
-            timeout: Timeout for the command execution
-
-        Returns:
-            The result of the command
-        """
-        if self._process is None or self._process.poll() is not None:
-            msg = "Persistent session not started or already closed"
-            raise RuntimeError(msg)
-
+    def close(self) -> None:
+        """Shut down the PhantomJS process cleanly."""
         if self._is_closed:
-            msg = "Driver has been closed"
-            raise RuntimeError(msg)
+            return
+        self._is_closed = True
 
-        command = {
-            "action": action,
-            "params": params or {}
-        }
-
-        # Write command to the command file
-        with open(self._command_file.name, "w") as f:
-            f.write(json.dumps(command))
-
-        # Wait for response with timeout
-        start_time = time.time()
-        while time.time() - start_time < timeout:
-            # Check if response file has content
-            try:
-                with open(self._response_file.name) as f:
-                    response_content = f.read().strip()
-
-                if response_content:
-                    # Clear the response file for next use
-                    with open(self._response_file.name, "w") as f:
-                        f.write("")
-
-                    result = json.loads(response_content)
-
-                    if result["type"] == "error":
-                        msg = f"PhantomJS error: {result['message']}"
-                        raise RuntimeError(msg)
-                    elif result["type"] == "result":
-                        return result["data"]
-            except json.JSONDecodeError:
-                # Response not ready yet, continue waiting
-                time.sleep(0.05)
-                continue
-
-            # Small delay to prevent busy waiting
-            time.sleep(0.05)
-
-        msg = f"Command '{action}' timed out after {timeout} seconds"
-        raise TimeoutError(msg)
-
-    def exec(
-        self,
-        args: Union[str, Sequence[str]],
-        *,
-        capture_output: bool = False,
-        timeout: Optional[float] = 60,  # Increased timeout for persistent operations
-        check: bool = False,
-        ssl: bool = False,
-        env: Optional[dict] = None,
-        cwd: Optional[Union[str, Path]] = None,
-        **kwargs,
-    ) -> subprocess.CompletedProcess:
-        """
-        Execute PhantomJS with the given arguments using the persistent session.
-        For simple commands like --version, falls back to original method.
-        For script files, also falls back to maintain compatibility for complex operations.
-        """
-        # Check if this is a script execution (contains a .js file)
-        if isinstance(args, str):
-            args_list = [args]
-        else:
-            args_list = list(args)
-
-        # Check if any argument is a JavaScript file (temporary script)
-        has_js_file = any(arg.endswith(".js") for arg in args_list)
-
-        if has_js_file:
-            # For script files, fall back to the original implementation
-            # This maintains compatibility for complex operations like PDF generation
-            return super().exec(
-                args,
-                capture_output=capture_output,
-                timeout=timeout,
-                check=check,
-                ssl=ssl,
-                env=env,
-                cwd=cwd,
-                **kwargs
-            )
-        else:
-            # For simple commands, use the persistent session approach
-            if self._process is None or self._process.poll() is not None:
-                self.start_persistent_session()
-
-            # If args is a simple command, we'll convert it to a command for the persistent session
-            if isinstance(args, str):
-                # For persistent sessions, we need to handle this differently
-                # This is a simplified approach - in practice, you'd want to parse the command
-                # and convert it to appropriate persistent commands
-                if args.strip() == "--version":
-                    # Handle version command specially
-                    cmd = [str(self.bin_path), "--version"]
-
-                    if not ssl:
-                        if env is None:
-                            env = os.environ.copy()
-                        env["OPENSSL_CONF"] = ""
-
-                    return subprocess.run(
-                        cmd,
-                        capture_output=capture_output,
-                        timeout=timeout,
-                        check=check,
-                        env=env,
-                        cwd=cwd,
-                        **kwargs,
-                    )
-                else:
-                    # For other commands, we'll need to parse and convert to persistent commands
-                    # This is a simplified implementation - a full implementation would need
-                    # to parse PhantomJS command line arguments and convert them to appropriate
-                    # persistent session commands
-                    msg = f"Command '{args}' not supported in persistent mode. Use specific methods like navigate(), evaluate(), etc."
-                    raise NotImplementedError(msg)
-            else:
-                # Handle sequence of args
-                args_list = list(args)
-                if "--version" in args_list:
-                    cmd = [str(self.bin_path), "--version"]
-
-                    if not ssl:
-                        if env is None:
-                            env = os.environ.copy()
-                        env["OPENSSL_CONF"] = ""
-
-                    return subprocess.run(
-                        cmd,
-                        capture_output=capture_output,
-                        timeout=timeout,
-                        check=check,
-                        env=env,
-                        cwd=cwd,
-                        **kwargs,
-                    )
-                else:
-                    msg = f"Command '{args}' not supported in persistent mode. Use specific methods like navigate(), evaluate(), etc."
-                    raise NotImplementedError(msg)
-
-    def navigate(self, url: str, timeout: float = 60.0) -> str:
-        """Navigate to a URL using the persistent session."""
-        return self.send_command("navigate", {"url": url}, timeout=timeout)
-
-    def evaluate(self, expression: str, timeout: float = 60.0) -> Any:
-        """Evaluate a JavaScript expression using the persistent session."""
-        return self.send_command("evaluate", {"expression": expression}, timeout=timeout)
-
-    def click(self, selector: str, timeout: float = 60.0) -> bool:
-        """Click an element using the persistent session."""
-        return self.send_command("click", {"selector": selector}, timeout=timeout)
-
-    def fill(self, selector: str, value: str, timeout: float = 60.0) -> bool:
-        """Fill an input field using the persistent session."""
-        return self.send_command("fill", {"selector": selector, "value": value}, timeout=timeout)
-
-    def take_screenshot(self, path: Union[str, Path], timeout: float = 60.0) -> str:
-        """Take a screenshot using the persistent session."""
-        return self.send_command("screenshot", {"path": str(path)}, timeout=timeout)
-
-    def close(self):
-        """Close the persistent session."""
         if self._process and self._process.poll() is None:
             try:
-                # Send close command to the process
-                self.send_command("close", timeout=5.0)
-            except:
-                # If sending close command fails, terminate the process
-                self._process.terminate()
-                try:
-                    self._process.wait(timeout=5.0)
-                except subprocess.TimeoutExpired:
-                    self._process.kill()
-
-        # Clean up temporary files
-        for script in self._temp_scripts:
+                self._rpc("exit", timeout=3.0)
+            except Exception:
+                pass
             try:
-                if os.path.exists(script):
-                    os.unlink(script)
-            except OSError:
-                pass  # Ignore errors when cleaning up temp files
+                self._process.wait(timeout=5.0)
+            except subprocess.TimeoutExpired:
+                self._process.kill()
 
-        self._is_closed = True
         self._process = None
-        # Close file handles if they exist
-        if hasattr(self, "_command_file") and self._command_file:
-            try:
-                self._command_file.close()
-            except:
-                pass
-        if hasattr(self, "_response_file") and self._response_file:
-            try:
-                self._response_file.close()
-            except:
-                pass
+        self._port = None
+        self._base_url = None
 
-    def __del__(self):
-        """Cleanup when the object is destroyed."""
-        if not self._is_closed and self._process:
+    def __del__(self) -> None:
+        if not self._is_closed:
             self.close()
+
+    # ── RPC core ──────────────────────────────────────────────────────────────
+
+    def _rpc(self, action: str, params: Optional[dict] = None, timeout: float = 60.0) -> Any:
+        """
+        POST JSON params to /<action>, return the 'data' field on success,
+        raise RuntimeError on PhantomJS-level errors.
+        """
+        if self._base_url is None:
+            raise RuntimeError("Session not started — call start_persistent_session() first")
+
+        body = json.dumps(params or {}).encode()
+        req = urllib.request.Request(
+            f"{self._base_url}/{action}",
+            data=body,
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
+                payload = json.loads(resp.read().decode())
+        except urllib.error.URLError as exc:
+            raise RuntimeError(f"RPC transport error ({action}): {exc}") from exc
+
+        if not payload.get("ok"):
+            raise RuntimeError(f"PhantomJS error ({action}): {payload.get('error')}")
+        return payload.get("data")
+
+    # ── public API (used by browser.py) ───────────────────────────────────────
+
+    def navigate(self, url: str, wait_ms: int = 0, timeout: float = 60.0) -> str:
+        """Navigate to *url*, return outer HTML after an optional settle delay."""
+        return self._rpc("navigate", {"url": url, "wait": wait_ms}, timeout=timeout)
+
+    def evaluate(self, expression: str, timeout: float = 60.0) -> Any:
+        """Evaluate a JS expression and return the result."""
+        return self._rpc("evaluate", {"expression": expression}, timeout=timeout)
+
+    def click(self, selector: str, timeout: float = 60.0) -> bool:
+        """Click the first element matching *selector*. Returns True if found."""
+        return self._rpc("click", {"selector": selector}, timeout=timeout)
+
+    def fill(self, selector: str, value: str, timeout: float = 60.0) -> bool:
+        """Set the value of an input element. Returns True if found."""
+        return self._rpc("fill", {"selector": selector, "value": value}, timeout=timeout)
+
+    def take_screenshot(self, path: Union[str, Path], timeout: float = 60.0) -> str:
+        """Render the current page to an image file."""
+        return self._rpc("screenshot", {"path": str(path)}, timeout=timeout)
+
+    def generate_pdf(
+        self,
+        path: Union[str, Path],
+        format: str = "A4",
+        landscape: bool = False,
+        margin: Union[str, dict] = "1cm",
+        timeout: float = 60.0,
+    ) -> str:
+        """Render the current page to a PDF file."""
+        return self._rpc(
+            "pdf",
+            {"path": str(path), "format": format, "landscape": landscape, "margin": margin},
+            timeout=timeout,
+        )
+
+    def set_viewport(self, width: int, height: int, timeout: float = 10.0) -> None:
+        """Set the page viewport size."""
+        self._rpc("set_viewport", {"width": width, "height": height}, timeout=timeout)
