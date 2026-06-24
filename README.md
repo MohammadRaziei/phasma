@@ -33,8 +33,6 @@ pip install phasma
 **Requirements:** Python 3.10+  
 **Platforms:** Linux, macOS, Windows (x86 32-bit & 64-bit)
 
-> When installing from source (`pip install -e .`), run `python -m phasma driver download` once to fetch the binary.
-
 ---
 
 ## Quick start
