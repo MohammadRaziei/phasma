@@ -50,3 +50,7 @@ __all__ = [
     "sync_take_screenshot",
     "take_screenshot",
 ]
+
+from .svg import SvgRenderer
+
+__all__ += ["SvgRenderer"]
