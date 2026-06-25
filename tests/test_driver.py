@@ -103,6 +103,4 @@ class TestDriver:
         result2 = driver.exec("--version", capture_output=True)
         assert result2.returncode == 0
 
-        # Test alias run method
-        result3 = driver.run("--version", capture_output=True)
-        assert result3.returncode == 0
+

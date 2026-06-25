@@ -123,7 +123,4 @@ class Driver:
             **kwargs,
         )
 
-    def run(self, *args, **kwargs) -> subprocess.CompletedProcess:
-        """Alias for exec."""
-        return self.exec(*args, **kwargs)
 
