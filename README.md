@@ -239,36 +239,36 @@ async with SvgRenderer() as r:
 
 ```bash
 # driver management
-python -m phasma driver --version
-python -m phasma driver --path
-python -m phasma driver download --force
+phasma driver --version
+phasma driver --path
+phasma driver download --force
 
 # run a PhantomJS script directly
-python -m phasma driver exec script.js
-python -m phasma driver exec script.js --ssl --timeout 30
+phasma driver exec script.js
+phasma driver exec script.js --ssl --timeout 30
 
 # render HTML to stdout or file
-python -m phasma render-page file.html
-python -m phasma render-page file.html -o out.html --viewport 1920x1080 --wait 500
-python -m phasma render-url https://example.com -o page.html --wait 2000
+phasma render-page file.html
+phasma render-page file.html -o out.html --viewport 1920x1080 --wait 500
+phasma render-url https://example.com -o page.html --wait 2000
 
 # execute JavaScript
-python -m phasma execjs "document.title"
-python -m phasma execjs -                          # read from stdin
+phasma execjs "document.title"
+phasma execjs -                          # read from stdin
 
 # screenshot
-python -m phasma screenshot https://example.com shot.png --viewport 1280x720 --wait 1000
+phasma screenshot https://example.com shot.png --viewport 1280x720 --wait 1000
 
 # PDF
-python -m phasma pdf https://example.com doc.pdf --format A4 --landscape --margin 2cm
+phasma pdf https://example.com doc.pdf --format A4 --landscape --margin 2cm
 
 # SVG conversion
-python -m phasma svg diagram.svg -o diagram.png
-python -m phasma svg diagram.svg -o diagram.png --scale 2.0
-python -m phasma svg diagram.svg -o diagram.jpg --format jpeg --background white
-python -m phasma svg diagram.svg -o diagram.pdf --format pdf
-python -m phasma svg diagram.svg -o diagram.pdf --format pdf --pdf-format A4 --landscape
-python -m phasma svg - -o out.png                  # read SVG from stdin
+phasma svg diagram.svg -o diagram.png
+phasma svg diagram.svg -o diagram.png --scale 2.0
+phasma svg diagram.svg -o diagram.jpg --format jpeg --background white
+phasma svg diagram.svg -o diagram.pdf --format pdf
+phasma svg diagram.svg -o diagram.pdf --format pdf --pdf-format A4 --landscape
+phasma svg - -o out.png                  # read SVG from stdin
 ```
 
 ---
@@ -277,7 +277,7 @@ python -m phasma svg - -o out.png                  # read SVG from stdin
 
 **Installing from source** — binary is not bundled when cloning the repo. Run once:
 ```bash
-python -m phasma driver download
+phasma driver download
 ```
 
 **Timeout errors** — increase the `timeout` parameter in `goto()` or `wait_for_selector()`.
@@ -286,7 +286,7 @@ python -m phasma driver download
 
 **Check binary path:**
 ```bash
-python -m phasma driver --path
+phasma driver --path
 ```
 
 ---

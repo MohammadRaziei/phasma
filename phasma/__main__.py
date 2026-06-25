@@ -1,5 +1,5 @@
 """
-Phasma CLI — python -m phasma <command>
+Phasma CLI — phasma <command>
 
 Commands:
   driver              Manage the PhantomJS binary
@@ -69,28 +69,28 @@ async def _svg(args) -> None:
 
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="python -m phasma",
+        prog="phasma",
         description="Phasma: Playwright-like async API for PhantomJS",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 examples:
-  python -m phasma driver --version
-  python -m phasma driver download --force
-  python -m phasma driver exec script.js
+  phasma driver --version
+  phasma driver download --force
+  phasma driver exec script.js
 
-  python -m phasma render-page file.html -o out.html --viewport 1920x1080
-  python -m phasma render-url https://example.com -o page.html --wait 2000
+  phasma render-page file.html -o out.html --viewport 1920x1080
+  phasma render-url https://example.com -o page.html --wait 2000
 
-  python -m phasma execjs "document.title"
-  python -m phasma execjs -                          # read from stdin
+  phasma execjs "document.title"
+  phasma execjs -                          # read from stdin
 
-  python -m phasma screenshot https://example.com shot.png --viewport 1280x720
-  python -m phasma pdf https://example.com doc.pdf --format A4 --landscape
+  phasma screenshot https://example.com shot.png --viewport 1280x720
+  phasma pdf https://example.com doc.pdf --format A4 --landscape
 
-  python -m phasma svg diagram.svg -o diagram.png
-  python -m phasma svg diagram.svg -o diagram.png --scale 2.0
-  python -m phasma svg diagram.svg -o diagram.pdf --format pdf
-  python -m phasma svg diagram.svg -o diagram.pdf --format pdf --pdf-format A4
+  phasma svg diagram.svg -o diagram.png
+  phasma svg diagram.svg -o diagram.png --scale 2.0
+  phasma svg diagram.svg -o diagram.pdf --format pdf
+  phasma svg diagram.svg -o diagram.pdf --format pdf --pdf-format A4
         """,
     )
     sub = parser.add_subparsers(dest="command")
@@ -215,7 +215,7 @@ def main() -> None:
             _ok(str(Driver().bin_path))
 
         else:
-            # show help for `python -m phasma driver` with no subcommand
+            # show help for `phasma driver` with no subcommand
             parser.parse_args(["driver", "--help"])
 
     # ── render-page ───────────────────────────────────────────────────────────

@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "phasma"
-version = "0.7.0"
+version = "0.7.1"
 description = "Playwright-like async API for PhantomJS — pip install only, no apt, no npm, no Chrome."
 readme = "README.md"
 requires-python = ">=3.9"
@@ -32,6 +32,9 @@ dev = [
     "pytest>=7.0",
     "pytest-asyncio>=0.23",
 ]
+
+[project.scripts]
+phasma = "phasma.__main__:main"
 
 [project.urls]
 Source = "https://github.com/mohammadraziei/phasma"
