@@ -71,6 +71,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="phasma",
         description="Phasma: Playwright-like async API for PhantomJS",
+        # don't use add_help=False — keep -h working
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 examples:
@@ -93,11 +94,21 @@ examples:
   phasma svg diagram.svg -o diagram.pdf --format pdf --pdf-format A4
         """,
     )
+    import importlib.metadata
+    try:
+        _version = importlib.metadata.version("phasma")
+    except importlib.metadata.PackageNotFoundError:
+        _version = "unknown"
+    parser.add_argument(
+        "--version", "-v",
+        action="version",
+        version=_version,
+    )
     sub = parser.add_subparsers(dest="command")
 
     # ── driver ────────────────────────────────────────────────────────────────
     dp = sub.add_parser("driver", help="Manage the PhantomJS binary")
-    dp.add_argument("--version", action="store_true", help="Show PhantomJS version")
+    dp.add_argument("--version", "-v", action="store_true", help="Show PhantomJS version")
     dp.add_argument("--path",    action="store_true", help="Show binary path")
     dsub = dp.add_subparsers(dest="driver_action")
 
@@ -271,4 +282,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-    
