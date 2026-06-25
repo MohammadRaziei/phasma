@@ -153,7 +153,7 @@ One `SvgRenderer` instance = one PhantomJS process reused across all conversions
 |---|---|
 | `to_png(source, output?, scale?, background?)` | PNG bytes |
 | `to_jpeg(source, output?, scale?, background?)` | JPEG bytes |
-| `to_pdf(source, output?, scale?, pdf_format?, pdf_landscape?, pdf_margin?)` | PDF bytes |
+| `to_pdf(source, output?, scale?, pdf_format?, pdf_landscape?, pdf_margin?)` | PDF bytes — `pdf_format=None` fits paper to SVG size |
 
 `source` accepts an SVG string, a file path string, or a `Path` object.
 
@@ -243,21 +243,32 @@ python -m phasma driver --version
 python -m phasma driver --path
 python -m phasma driver download --force
 
-# run a PhantomJS script
+# run a PhantomJS script directly
 python -m phasma driver exec script.js
+python -m phasma driver exec script.js --ssl --timeout 30
 
-# render
-python -m phasma render-page file.html --output out.html --viewport 1920x1080
-python -m phasma render-url https://example.com --output page.html --wait 2000
+# render HTML to stdout or file
+python -m phasma render-page file.html
+python -m phasma render-page file.html -o out.html --viewport 1920x1080 --wait 500
+python -m phasma render-url https://example.com -o page.html --wait 2000
+
+# execute JavaScript
+python -m phasma execjs "document.title"
+python -m phasma execjs -                          # read from stdin
 
 # screenshot
-python -m phasma screenshot https://example.com shot.png --viewport 1280x720
+python -m phasma screenshot https://example.com shot.png --viewport 1280x720 --wait 1000
 
 # PDF
-python -m phasma pdf https://example.com doc.pdf --format A4 --landscape
+python -m phasma pdf https://example.com doc.pdf --format A4 --landscape --margin 2cm
 
-# execute JS
-python -m phasma execjs "document.title"
+# SVG conversion
+python -m phasma svg diagram.svg -o diagram.png
+python -m phasma svg diagram.svg -o diagram.png --scale 2.0
+python -m phasma svg diagram.svg -o diagram.jpg --format jpeg --background white
+python -m phasma svg diagram.svg -o diagram.pdf --format pdf
+python -m phasma svg diagram.svg -o diagram.pdf --format pdf --pdf-format A4 --landscape
+python -m phasma svg - -o out.png                  # read SVG from stdin
 ```
 
 ---
