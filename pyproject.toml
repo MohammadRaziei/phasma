@@ -5,10 +5,10 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "phasma"
-version = "0.6.0"
-description = "A modern PhantomJS driver for Python with bundled binaries, providing headless browser automation, web page rendering, and JavaScript execution."
+version = "0.7.0"
+description = "Playwright-like async API for PhantomJS — pip install only, no apt, no npm, no Chrome."
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.9"
 license = {file = "LICENSE"}
 keywords = ["phantomjs", "headless-browser", "web-automation", "javascript", "web-scraping"]
 authors = [
