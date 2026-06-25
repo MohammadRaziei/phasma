@@ -205,16 +205,24 @@ class Page:
         self,
         path: Union[str, Path],
         *,
-        format: str = "A4",
+        format: Optional[str] = "A4",
         landscape: bool = False,
         margin: Union[str, Dict[str, str]] = "1cm",
+        width: Optional[str] = None,
+        height: Optional[str] = None,
     ) -> bytes:
+        """Render the current page to a PDF.
+        
+        Use width/height (e.g. '400px', '297mm') for pixel-exact output,
+        or format (e.g. 'A4', 'Letter') for standard paper sizes.
+        """
         path = Path(path)
         loop = asyncio.get_event_loop()
         await loop.run_in_executor(
             None,
             lambda: self._driver.generate_pdf(
-                path, format=format, landscape=landscape, margin=margin
+                path, format=format, landscape=landscape,
+                margin=margin, width=width, height=height,
             ),
         )
         return path.read_bytes()

@@ -144,21 +144,32 @@ function handleRequest(request, response) {
     // pdf ---------------------------------------------------------------------
     if (action === 'pdf') {
         var path   = params.path;
-        var format = params.format || 'A4';
+        var format = params.format;
         var landscape = params.landscape || false;
-        var margin = params.margin || '1cm';
+        var margin = params.margin || '0';
+        var width  = params.width;   // custom CSS size e.g. "400px"
+        var height = params.height;  // custom CSS size e.g. "300px"
         if (!path) { err(response, 'missing path'); return; }
         try {
             var marginObj = (typeof margin === 'string')
                 ? { top: margin, bottom: margin, left: margin, right: margin }
                 : margin;
-            page.paperSize = {
-                format:      format,
-                orientation: landscape ? 'landscape' : 'portrait',
-                margin:      marginObj
-            };
+
+            if (width && height) {
+                // custom pixel-exact paper size
+                page.paperSize = {
+                    width:  width,
+                    height: height,
+                    margin: marginObj
+                };
+            } else {
+                page.paperSize = {
+                    format:      format || 'A4',
+                    orientation: landscape ? 'landscape' : 'portrait',
+                    margin:      marginObj
+                };
+            }
             page.render(path, { format: 'pdf' });
-            // reset paperSize so screenshots still work afterwards
             page.paperSize = {};
             ok(response, path);
         } catch (e) {

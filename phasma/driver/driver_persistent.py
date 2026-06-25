@@ -162,17 +162,26 @@ class DriverPersistent(Driver):
     def generate_pdf(
         self,
         path: Union[str, Path],
-        format: str = "A4",
+        format: Optional[str] = "A4",
         landscape: bool = False,
         margin: Union[str, dict] = "1cm",
+        width: Optional[str] = None,
+        height: Optional[str] = None,
         timeout: float = 60.0,
     ) -> str:
-        """Render the current page to a PDF file."""
-        return self._rpc(
-            "pdf",
-            {"path": str(path), "format": format, "landscape": landscape, "margin": margin},
-            timeout=timeout,
-        )
+        """Render the current page to a PDF file.
+        
+        Pass width/height (e.g. '400px') for pixel-exact paper size,
+        or format (e.g. 'A4') for standard paper sizes.
+        """
+        params: dict = {"path": str(path), "margin": margin}
+        if width and height:
+            params["width"] = width
+            params["height"] = height
+        else:
+            params["format"] = format
+            params["landscape"] = landscape
+        return self._rpc("pdf", params, timeout=timeout)
 
     def set_viewport(self, width: int, height: int, timeout: float = 10.0) -> None:
         """Set the page viewport size."""

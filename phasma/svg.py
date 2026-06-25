@@ -214,12 +214,21 @@ class SvgRenderer:
             out_path = Path(tmp.name)
 
         if fmt == "pdf":
-            return await self._page.pdf(
-                out_path,
-                format=pdf_format,
-                landscape=pdf_landscape,
-                margin=pdf_margin,
-            )
+            if pdf_format is None:
+                # fit mode: paper = SVG dimensions exactly
+                pw = f"{vp_w}px"
+                ph = f"{vp_h}px"
+                return await self._page.pdf(
+                    out_path, margin=pdf_margin,
+                    width=pw, height=ph,
+                )
+            else:
+                return await self._page.pdf(
+                    out_path,
+                    format=pdf_format,
+                    landscape=pdf_landscape,
+                    margin=pdf_margin,
+                )
         else:
             if fmt == "jpeg" and out_path.suffix.lower() not in (".jpg", ".jpeg"):
                 out_path = out_path.with_suffix(".jpg")
@@ -278,27 +287,28 @@ class SvgRenderer:
         *,
         scale: float = 1.0,
         background: str = "white",
-        pdf_format: str = "A4",
+        pdf_format: Optional[str] = None,
         pdf_landscape: bool = False,
         pdf_margin: str = "0",
     ) -> bytes:
         """
         Render SVG to PDF.
 
+        By default (pdf_format=None), the paper size matches the SVG dimensions
+        exactly — no white borders, no cropping.
+
         Parameters
         ----------
         source:         SVG string, path string, or Path object.
         output:         Optional file path to write the result.
-        scale:          Size multiplier.
+        scale:          Size multiplier applied to the SVG dimensions.
         background:     CSS color for the page background.
-        pdf_format:     Paper format (e.g. "A4", "Letter").
-        pdf_landscape:  Landscape orientation.
+        pdf_format:     Standard paper format e.g. "A4", "Letter".
+                        Pass None (default) to use the SVG's own dimensions.
+        pdf_landscape:  Landscape orientation (only used with pdf_format).
         pdf_margin:     CSS margin string (e.g. "0", "1cm").
-
-        Returns the PDF bytes.
         """
         return await self._render(
             source, output, "pdf", scale, background,
             pdf_format, pdf_landscape, pdf_margin,
         )
-    
