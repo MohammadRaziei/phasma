@@ -68,6 +68,49 @@ def _parse_dimensions(svg_text: str) -> Tuple[Optional[int], Optional[int]]:
     return _attr("width"), _attr("height")
 
 
+def _make_responsive(svg_text: str) -> str:
+    """
+    Replace fixed width/height on the root <svg> with 100% so the element
+    fills whatever viewport PhantomJS is given.  viewBox is preserved (or
+    added from the original dimensions) so the content scales correctly.
+    """
+    m = re.search(r"<svg([^>]*)>", svg_text, re.DOTALL)
+    if not m:
+        return svg_text
+
+    attrs = m.group(1)
+
+    # extract original dims to build a viewBox if one is missing
+    def _num(name: str) -> Optional[int]:
+        am = re.search(rf'{name}\s*=\s*["\']([^"\']+)["\']', attrs)
+        if not am:
+            return None
+        try:
+            return int(float(am.group(1).strip().rstrip("px")))
+        except ValueError:
+            return None
+
+    orig_w, orig_h = _num("width"), _num("height")
+
+    new_attrs = attrs
+
+    # add viewBox before stripping width/height
+    if "viewBox" not in attrs and orig_w and orig_h:
+        new_attrs += f' viewBox="0 0 {orig_w} {orig_h}"'
+
+    # replace fixed dimensions with 100%
+    new_attrs = re.sub(r'\s*width\s*=\s*["\'][^"\']*["\']',  ' width="100%"',  new_attrs, count=1)
+    new_attrs = re.sub(r'\s*height\s*=\s*["\'][^"\']*["\']', ' height="100%"', new_attrs, count=1)
+
+    # if there were no width/height attrs at all, add them
+    if 'width="100%"' not in new_attrs:
+        new_attrs += ' width="100%"'
+    if 'height="100%"' not in new_attrs:
+        new_attrs += ' height="100%"'
+
+    return svg_text[:m.start()] + f"<svg{new_attrs}>" + svg_text[m.end():]
+
+
 def _svg_to_html(svg_text: str, background: str) -> str:
     return f"""<!DOCTYPE html>
 <html>
@@ -75,8 +118,8 @@ def _svg_to_html(svg_text: str, background: str) -> str:
 <meta charset="utf-8"/>
 <style>
   * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-  html, body {{ background: {background}; overflow: hidden; }}
-  svg {{ display: block; }}
+  html, body {{ background: {background}; overflow: hidden; width: 100%; height: 100%; }}
+  svg {{ display: block; width: 100%; height: 100%; }}
 </style>
 </head>
 <body>{svg_text}</body>
@@ -150,6 +193,7 @@ class SvgRenderer:
         vp_w = max(1, round(w * scale)) if w else 1280
         vp_h = max(1, round(h * scale)) if h else 960
 
+        svg_text = _make_responsive(svg_text)
         html = _svg_to_html(svg_text, background)
         await self._page.set_viewport_size(vp_w, vp_h)
 
@@ -257,3 +301,4 @@ class SvgRenderer:
             source, output, "pdf", scale, background,
             pdf_format, pdf_landscape, pdf_margin,
         )
+    
