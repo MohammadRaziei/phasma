@@ -7,7 +7,8 @@
  *   Response:        {"ok": true,  "data": ...}
  *                 or {"ok": false, "error": "..."}
  *
- * Actions: navigate, evaluate, click, fill, screenshot, set_viewport, exit
+ * Actions: navigate, evaluate, click, fill, screenshot, set_viewport, exit,
+ *          layout, scroll, region_screenshot, mouse, key, active_element
  */
 
 "use strict";
@@ -50,6 +51,143 @@ var page = webpage.create();
 page.settings.javascriptEnabled     = true;
 page.settings.localToRemoteUrlAccess = true;
 page.viewportSize = { width: 1024, height: 768 };
+
+// ── layout extraction (in-page function, injected via page.evaluate) ───────────
+// Walks the DOM and returns text runs (as real characters, never rasterized)
+// plus the bounding boxes of image elements (the only thing meant to be
+// rasterized by the terminal renderer). All rects are viewport-relative, i.e.
+// already account for the current scroll position.
+
+function _phasmaComputeLayout(viewportW, viewportH) {
+    var results = { texts: [], images: [], texts_truncated: false };
+    var body = document.body;
+    if (!body) return results;
+
+    function isVisible(el) {
+        var style = window.getComputedStyle(el);
+        if (!style) return true;
+        if (style.display === 'none' || style.visibility === 'hidden') return false;
+        if (parseFloat(style.opacity) === 0) return false;
+        return true;
+    }
+
+    function ancestorsVisible(el) {
+        while (el) {
+            if (!isVisible(el)) return false;
+            el = el.parentElement;
+        }
+        return true;
+    }
+
+    function intersectsViewport(rect) {
+        return rect.right > 0 && rect.left < viewportW &&
+               rect.bottom > 0 && rect.top < viewportH;
+    }
+
+    var MAX_RUNS = 20000; // safety valve against pathological pages
+    var range = document.createRange();
+    var walker = document.createTreeWalker(body, NodeFilter.SHOW_TEXT, null, false);
+    var node;
+
+    while ((node = walker.nextNode())) {
+        if (results.texts.length >= MAX_RUNS) { results.texts_truncated = true; break; }
+
+        var raw = node.nodeValue;
+        if (!raw || !/\S/.test(raw)) continue;
+
+        var parentEl = node.parentElement;
+        if (!parentEl) continue;
+        var parentTag = parentEl.tagName;
+        if (parentTag === 'SCRIPT' || parentTag === 'STYLE' || parentTag === 'NOSCRIPT' ||
+            parentTag === 'TITLE' || parentTag === 'TEMPLATE') continue;
+
+        // Cheap pre-filter: skip the whole node if its parent element's box
+        // doesn't intersect the viewport at all (avoids per-char DOM calls).
+        var parentRect = parentEl.getBoundingClientRect();
+        if (!intersectsViewport(parentRect)) continue;
+        if (!ancestorsVisible(parentEl)) continue;
+
+        var style = window.getComputedStyle(parentEl);
+        var color = style.color;
+        var bg = style.backgroundColor;
+        var weight = parseInt(style.fontWeight, 10);
+        var bold = style.fontWeight === 'bold' || (!isNaN(weight) && weight >= 600);
+        var italic = style.fontStyle === 'italic';
+        var decoration = String(style.textDecorationLine || style.textDecoration || '');
+        var underline = decoration.indexOf('underline') !== -1;
+
+        var len = raw.length;
+        var run = null;
+        // NOTE: deliberately no nested `function flush(){}` declared inside
+        // this loop — PhantomJS's bundled JavaScriptCore hangs indefinitely
+        // on a block-scoped function declaration re-entered on every loop
+        // iteration. Flushing is inlined instead (3 call sites below).
+
+        for (var i = 0; i < len; i++) {
+            var ch = raw[i];
+            range.setStart(node, i);
+            range.setEnd(node, i + 1);
+            var rects = range.getClientRects();
+            if (!rects.length) continue;
+            var r = rects[0];
+            if (r.width <= 0 || r.height <= 0) { continue; }
+            if (!intersectsViewport(r)) {
+                if (run && /\S/.test(run.text)) results.texts.push(run);
+                run = null;
+                continue;
+            }
+
+            var sameLine = run &&
+                Math.abs(r.top - run.y) < 2 &&
+                r.left >= run.x + run.w - 2 &&
+                r.left <= run.x + run.w + (r.width * 3 + 4);
+
+            if (sameLine) {
+                // preserve inter-word gaps as a single space if the browser
+                // rendered extra horizontal gap between consecutive chars
+                var gap = r.left - (run.x + run.w);
+                if (gap > (r.width * 0.6) && run.text.slice(-1) !== ' ') {
+                    run.text += ' ';
+                }
+                run.text += ch;
+                run.w = (r.right - run.x);
+                run.h = Math.max(run.h, r.height);
+            } else {
+                if (run && /\S/.test(run.text)) results.texts.push(run);
+                run = {
+                    text: ch, x: r.left, y: r.top, w: r.width, h: r.height,
+                    color: color, bg: bg, bold: bold, italic: italic, underline: underline
+                };
+            }
+        }
+        if (run && /\S/.test(run.text)) results.texts.push(run);
+    }
+
+    var imgs = body.querySelectorAll('img');
+    for (var k = 0; k < imgs.length; k++) {
+        var img = imgs[k];
+        if (!ancestorsVisible(img)) continue;
+        var rect = img.getBoundingClientRect();
+        if (rect.width <= 0 || rect.height <= 0) continue;
+        if (!intersectsViewport(rect)) continue;
+        results.images.push({
+            src: img.src, x: rect.left, y: rect.top, w: rect.width, h: rect.height,
+            alt: img.alt || ''
+        });
+    }
+
+    results.pageWidth = Math.max(
+        body.scrollWidth, document.documentElement.scrollWidth
+    );
+    results.pageHeight = Math.max(
+        body.scrollHeight, document.documentElement.scrollHeight
+    );
+    results.scrollX = window.pageXOffset;
+    results.scrollY = window.pageYOffset;
+    results.title = document.title;
+
+    return results;
+}
 
 // ── request router ────────────────────────────────────────────────────────────
 
@@ -185,6 +323,111 @@ function handleRequest(request, response) {
             height: params.height || 768
         };
         ok(response, null);
+        return;
+    }
+
+    // layout --------------------------------------------------------------------
+    // Returns real text (never rasterized) plus the bounding boxes of <img>
+    // elements only — those are the sole things the terminal renderer turns
+    // into ASCII/ANSI block art.
+    if (action === 'layout') {
+        try {
+            var vp = page.viewportSize;
+            var data = page.evaluate(_phasmaComputeLayout, vp.width, vp.height);
+            ok(response, data);
+        } catch (e) {
+            err(response, e.message);
+        }
+        return;
+    }
+
+    // scroll --------------------------------------------------------------------
+    if (action === 'scroll') {
+        try {
+            var pos = page.evaluate(function (dx, dy, absolute) {
+                if (absolute) {
+                    window.scrollTo(dx, dy);
+                } else {
+                    window.scrollBy(dx, dy);
+                }
+                return { x: window.pageXOffset, y: window.pageYOffset };
+            }, params.dx || 0, params.dy || 0, !!params.absolute);
+            ok(response, pos);
+        } catch (e) {
+            err(response, e.message);
+        }
+        return;
+    }
+
+    // region_screenshot -----------------------------------------------------
+    // Renders only a sub-rectangle of the current viewport to a PNG file.
+    // Used exclusively for <img> regions — never for text.
+    if (action === 'region_screenshot') {
+        var rpath = params.path;
+        if (!rpath) { err(response, 'missing path'); return; }
+        try {
+            var prevClip = page.clipRect;
+            page.clipRect = {
+                left: params.left || 0, top: params.top || 0,
+                width: params.width || 1, height: params.height || 1
+            };
+            page.render(rpath);
+            page.clipRect = prevClip || {};
+            ok(response, rpath);
+        } catch (e) {
+            err(response, e.message);
+        }
+        return;
+    }
+
+    // mouse -----------------------------------------------------------------
+    // type: 'click' | 'mousedown' | 'mouseup' | 'mousemove' | 'doubleclick'
+    if (action === 'mouse') {
+        try {
+            var mtype = params.type || 'click';
+            page.sendEvent(mtype, params.x || 0, params.y || 0, params.button || 'left');
+            ok(response, null);
+        } catch (e) {
+            err(response, e.message);
+        }
+        return;
+    }
+
+    // key ---------------------------------------------------------------------
+    // Either {text: "abc"} to type literal characters, or {special: "Backspace"}
+    // for a named key (Backspace, Enter, Tab, Left, Right, Up, Down, Escape,
+    // Delete, Home, End).
+    if (action === 'key') {
+        try {
+            if (params.special) {
+                var code = page.event.key[params.special];
+                if (code === undefined) { err(response, 'unknown special key: ' + params.special); return; }
+                page.sendEvent('keypress', code);
+            } else {
+                page.sendEvent('keypress', params.text || '');
+            }
+            ok(response, null);
+        } catch (e) {
+            err(response, e.message);
+        }
+        return;
+    }
+
+    // active_element ------------------------------------------------------------
+    if (action === 'active_element') {
+        try {
+            var info = page.evaluate(function () {
+                var el = document.activeElement;
+                if (!el) return null;
+                var tag = el.tagName;
+                var editable = (tag === 'INPUT' || tag === 'TEXTAREA' || el.isContentEditable);
+                var type = tag === 'INPUT' ? (el.type || 'text') : null;
+                return { tag: tag, editable: !!editable, type: type };
+            });
+            ok(response, info);
+        } catch (e) {
+            err(response, e.message);
+        }
         return;
     }
 

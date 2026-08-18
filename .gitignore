@@ -127,3 +127,4 @@ Pipfile.lock
 poetry.lock
 
 build/
+svg_output

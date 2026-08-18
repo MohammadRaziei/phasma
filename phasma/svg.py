@@ -48,43 +48,24 @@ def _read_svg(source: Union[str, Path]) -> str:
 
 
 def _parse_dimensions(svg_text: str) -> Tuple[Optional[int], Optional[int]]:
-    """
-    Extract width/height from the root <svg> tag.
-    Falls back to viewBox when width/height are missing or non-numeric (e.g. "100%").
-    """
+    """Extract width/height from the root <svg> tag (integers and px values only)."""
     m = re.search(r"<svg[^>]*>", svg_text, re.DOTALL)
     if not m:
         return None, None
 
     tag = m.group(0)
 
-    def _attr_int(name: str) -> Optional[int]:
+    def _attr(name: str) -> Optional[int]:
         am = re.search(rf'{name}\s*=\s*["\']([^"\']+)["\']', tag)
         if not am:
             return None
         val = am.group(1).strip().rstrip("px").strip()
         try:
-            v = int(float(val))
-            return v if v > 0 else None
+            return int(float(val))
         except ValueError:
-            return None  # "100%", "auto", etc.
+            return None
 
-    w = _attr_int("width")
-    h = _attr_int("height")
-
-    # fallback: viewBox="x y w h"
-    if w is None or h is None:
-        vb = re.search(r'viewBox\s*=\s*["\']([^"\']+)["\']', tag)
-        if vb:
-            parts = vb.group(1).strip().split()
-            if len(parts) == 4:
-                try:
-                    w = w or int(float(parts[2]))
-                    h = h or int(float(parts[3]))
-                except ValueError:
-                    pass
-
-    return w, h
+    return _attr("width"), _attr("height")
 
 
 def _make_responsive(svg_text: str) -> str:
@@ -331,4 +312,3 @@ class SvgRenderer:
             source, output, "pdf", scale, background,
             pdf_format, pdf_landscape, pdf_margin,
         )
-    

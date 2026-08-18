@@ -186,3 +186,41 @@ class DriverPersistent(Driver):
     def set_viewport(self, width: int, height: int, timeout: float = 10.0) -> None:
         """Set the page viewport size."""
         self._rpc("set_viewport", {"width": width, "height": height}, timeout=timeout)
+
+    # ── layout / terminal-browser primitives ────────────────────────────────
+
+    def get_layout(self, timeout: float = 30.0) -> dict:
+        """
+        Walk the current page's DOM and return real text runs (never
+        rasterized) plus the bounding boxes of <img> elements — the only
+        thing meant to be turned into ASCII/ANSI art by a terminal renderer.
+        All coordinates are viewport-relative (already account for scroll).
+        """
+        return self._rpc("layout", timeout=timeout)
+
+    def scroll(self, dx: int = 0, dy: int = 0, *, absolute: bool = False, timeout: float = 10.0) -> dict:
+        """Scroll the page by (dx, dy), or to (dx, dy) if absolute=True. Returns the new scroll position."""
+        return self._rpc("scroll", {"dx": dx, "dy": dy, "absolute": absolute}, timeout=timeout)
+
+    def region_screenshot(self, path: Union[str, Path], left: int, top: int, width: int, height: int,
+                           timeout: float = 30.0) -> str:
+        """Render only a sub-rectangle of the current viewport to a PNG file (used for <img> regions)."""
+        return self._rpc(
+            "region_screenshot",
+            {"path": str(path), "left": left, "top": top, "width": width, "height": height},
+            timeout=timeout,
+        )
+
+    def mouse_event(self, type: str, x: int, y: int, button: str = "left", timeout: float = 10.0) -> None:
+        """Dispatch a mouse event at viewport coordinates (x, y). type: click|mousedown|mouseup|mousemove|doubleclick."""
+        self._rpc("mouse", {"type": type, "x": x, "y": y, "button": button}, timeout=timeout)
+
+    def send_key(self, text: Optional[str] = None, special: Optional[str] = None, timeout: float = 10.0) -> None:
+        """Type literal *text* into the focused element, or send a *special* key
+        (Backspace, Enter, Tab, Left, Right, Up, Down, Escape, Delete, Home, End)."""
+        params = {"special": special} if special else {"text": text or ""}
+        self._rpc("key", params, timeout=timeout)
+
+    def active_element(self, timeout: float = 10.0) -> Optional[dict]:
+        """Return {tag, editable, type} for document.activeElement, or None."""
+        return self._rpc("active_element", timeout=timeout)
