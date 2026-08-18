@@ -88,12 +88,20 @@ function _phasmaComputeLayout(viewportW, viewportH) {
     var range = document.createRange();
     var walker = document.createTreeWalker(body, NodeFilter.SHOW_TEXT, null, false);
     var node;
+    // Tracks whether the previous piece of text (possibly in a different
+    // text node / across an inline element boundary) ended in whitespace.
+    // Needed because old WebKit sometimes collapses whitespace that sits
+    // exactly at an inline-element boundary to zero width in the actual
+    // layout (not just in Range measurement), which would otherwise make
+    // e.g. "and <i>italic</i>" look like "anditalic" once placed in the
+    // terminal grid. See grid.py's use of `gapBefore`.
+    var pendingSpace = true;
 
     while ((node = walker.nextNode())) {
         if (results.texts.length >= MAX_RUNS) { results.texts_truncated = true; break; }
 
         var raw = node.nodeValue;
-        if (!raw || !/\S/.test(raw)) continue;
+        if (!raw || !/\S/.test(raw)) { pendingSpace = pendingSpace || /\s/.test(raw || ''); continue; }
 
         var parentEl = node.parentElement;
         if (!parentEl) continue;
@@ -116,51 +124,78 @@ function _phasmaComputeLayout(viewportW, viewportH) {
         var decoration = String(style.textDecorationLine || style.textDecoration || '');
         var underline = decoration.indexOf('underline') !== -1;
 
-        var len = raw.length;
-        var run = null;
-        // NOTE: deliberately no nested `function flush(){}` declared inside
-        // this loop — PhantomJS's bundled JavaScriptCore hangs indefinitely
-        // on a block-scoped function declaration re-entered on every loop
-        // iteration. Flushing is inlined instead (3 call sites below).
+        // Measure whole words at a time (not individual characters): far
+        // fewer DOM calls, and it sidesteps a WebKit quirk where an
+        // isolated whitespace Range measures as zero-width, which would
+        // otherwise make adjacent words from different text nodes appear
+        // to visually merge. Whitespace itself is never measured or drawn
+        // (blank cells already default to space).
+        var tokens = raw.match(/\S+/g);
+        if (!tokens) continue;
+        var searchPos = 0;
 
-        for (var i = 0; i < len; i++) {
-            var ch = raw[i];
-            range.setStart(node, i);
-            range.setEnd(node, i + 1);
+        for (var ti = 0; ti < tokens.length; ti++) {
+            if (results.texts.length >= MAX_RUNS) { results.texts_truncated = true; break; }
+            var word = tokens[ti];
+            var wordStart = raw.indexOf(word, searchPos);
+            if (wordStart < 0) continue;
+            var wordEnd = wordStart + word.length;
+            var gapBefore = (ti > 0) || (wordStart > 0) || pendingSpace;
+            searchPos = wordEnd;
+
+            range.setStart(node, wordStart);
+            range.setEnd(node, wordEnd);
             var rects = range.getClientRects();
-            if (!rects.length) continue;
-            var r = rects[0];
-            if (r.width <= 0 || r.height <= 0) { continue; }
-            if (!intersectsViewport(r)) {
-                if (run && /\S/.test(run.text)) results.texts.push(run);
-                run = null;
-                continue;
-            }
 
-            var sameLine = run &&
-                Math.abs(r.top - run.y) < 2 &&
-                r.left >= run.x + run.w - 2 &&
-                r.left <= run.x + run.w + (r.width * 3 + 4);
-
-            if (sameLine) {
-                // preserve inter-word gaps as a single space if the browser
-                // rendered extra horizontal gap between consecutive chars
-                var gap = r.left - (run.x + run.w);
-                if (gap > (r.width * 0.6) && run.text.slice(-1) !== ' ') {
-                    run.text += ' ';
+            if (rects.length === 1) {
+                var r = rects[0];
+                if (r.width <= 0 || r.height <= 0) continue;
+                if (!intersectsViewport(r)) continue;
+                results.texts.push({
+                    text: word, x: r.left, y: r.top, w: r.width, h: r.height,
+                    color: color, bg: bg, bold: bold, italic: italic, underline: underline,
+                    gapBefore: gapBefore
+                });
+            } else if (rects.length > 1) {
+                // Rare: a single word wraps across more than one visual
+                // line. Fall back to per-character measurement for just
+                // this word so each visual line still gets its own run.
+                var runX = null, runY = null, runW = 0, runH = 0, runText = '';
+                for (var ci = 0; ci < word.length; ci++) {
+                    range.setStart(node, wordStart + ci);
+                    range.setEnd(node, wordStart + ci + 1);
+                    var crects = range.getClientRects();
+                    if (!crects.length) continue;
+                    var cr = crects[0];
+                    if (cr.width <= 0 || cr.height <= 0) continue;
+                    var sameLine = runY !== null && Math.abs(cr.top - runY) < 2;
+                    if (sameLine) {
+                        runText += word[ci];
+                        runW = cr.right - runX;
+                        runH = Math.max(runH, cr.height);
+                    } else {
+                        if (runText && intersectsViewport({ left: runX, top: runY, right: runX + runW, bottom: runY + runH })) {
+                            results.texts.push({
+                                text: runText, x: runX, y: runY, w: runW, h: runH,
+                                color: color, bg: bg, bold: bold, italic: italic, underline: underline,
+                                gapBefore: gapBefore
+                            });
+                            gapBefore = false; // only the word's first visual line inherits the real gap
+                        }
+                        runX = cr.left; runY = cr.top; runW = cr.width; runH = cr.height; runText = word[ci];
+                    }
                 }
-                run.text += ch;
-                run.w = (r.right - run.x);
-                run.h = Math.max(run.h, r.height);
-            } else {
-                if (run && /\S/.test(run.text)) results.texts.push(run);
-                run = {
-                    text: ch, x: r.left, y: r.top, w: r.width, h: r.height,
-                    color: color, bg: bg, bold: bold, italic: italic, underline: underline
-                };
+                if (runText && intersectsViewport({ left: runX, top: runY, right: runX + runW, bottom: runY + runH })) {
+                    results.texts.push({
+                        text: runText, x: runX, y: runY, w: runW, h: runH,
+                        color: color, bg: bg, bold: bold, italic: italic, underline: underline,
+                        gapBefore: gapBefore
+                    });
+                }
             }
         }
-        if (run && /\S/.test(run.text)) results.texts.push(run);
+        pendingSpace = wordEnd < raw.length; // does this node's raw text trail off in whitespace?
+        if (results.texts_truncated) break;
     }
 
     var imgs = body.querySelectorAll('img');

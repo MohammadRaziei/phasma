@@ -183,6 +183,61 @@ class Page:
             await asyncio.sleep(0.1)
         return None
 
+    # terminal-browser primitives ------------------------------------------------
+
+    async def layout(self) -> Dict:
+        """Return the current viewport's layout: real text runs (never
+        rasterized) plus the bounding boxes of <img> elements only."""
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(
+            None,
+            lambda: self._driver.get_layout(),
+        )
+
+    async def scroll(self, dx: int = 0, dy: int = 0, *, absolute: bool = False) -> Dict:
+        """Scroll by (dx, dy), or to (dx, dy) if absolute=True. Returns the new scroll position."""
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(
+            None,
+            lambda: self._driver.scroll(dx, dy, absolute=absolute),
+        )
+
+    async def region_screenshot(self, path: Union[str, Path], left: int, top: int,
+                                 width: int, height: int) -> bytes:
+        """Render only a sub-rectangle of the viewport to PNG (used for <img> regions)."""
+        path = Path(path)
+        loop = asyncio.get_event_loop()
+        await loop.run_in_executor(
+            None,
+            lambda: self._driver.region_screenshot(path, left, top, width, height),
+        )
+        return path.read_bytes()
+
+    async def mouse_event(self, type: str, x: int, y: int, button: str = "left") -> None:
+        """Dispatch a mouse event at viewport coordinates. type: click|mousedown|mouseup|mousemove|doubleclick."""
+        loop = asyncio.get_event_loop()
+        await loop.run_in_executor(
+            None,
+            lambda: self._driver.mouse_event(type, x, y, button),
+        )
+
+    async def send_key(self, text: Optional[str] = None, special: Optional[str] = None) -> None:
+        """Type *text* into the focused element, or send a *special* key
+        (Backspace, Enter, Tab, Left, Right, Up, Down, Escape, Delete, Home, End)."""
+        loop = asyncio.get_event_loop()
+        await loop.run_in_executor(
+            None,
+            lambda: self._driver.send_key(text=text, special=special),
+        )
+
+    async def active_element(self) -> Optional[Dict]:
+        """Return {tag, editable, type} for document.activeElement, or None."""
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(
+            None,
+            lambda: self._driver.active_element(),
+        )
+
     # media --------------------------------------------------------------------
 
     async def screenshot(

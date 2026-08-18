@@ -9,6 +9,7 @@ Commands:
   screenshot          Take a screenshot
   pdf                 Generate a PDF
   svg                 Convert SVG to PNG, JPEG, or PDF
+  browse              Open a URL as an interactive terminal browser
 """
 
 import argparse
@@ -92,6 +93,8 @@ examples:
   phasma svg diagram.svg -o diagram.png --scale 2.0
   phasma svg diagram.svg -o diagram.pdf --format pdf
   phasma svg diagram.svg -o diagram.pdf --format pdf --pdf-format A4
+
+  phasma browse https://example.com          # interactive terminal browser
         """,
     )
     import importlib.metadata
@@ -177,6 +180,15 @@ examples:
                     help="Landscape orientation (PDF only)")
     sv.add_argument("--margin",         default="0",
                     help="PDF margin e.g. '1cm', '10px' (default: 0)")
+
+    # ── browse ────────────────────────────────────────────────────────────────
+    br = sub.add_parser(
+        "browse",
+        help="Open a URL as an interactive terminal browser (browsh-like, needs phasma[browse])",
+    )
+    br.add_argument("url", help="URL to browse (scheme optional, defaults to https://)")
+    br.add_argument("--char-size", default="8x17", metavar="WxH",
+                     help="assumed pixel size of one terminal character cell, e.g. 8x17 (default: 8x17)")
 
     return parser
 
@@ -274,6 +286,26 @@ def main() -> None:
     # ── svg ───────────────────────────────────────────────────────────────────
     elif args.command == "svg":
         asyncio.run(_svg(args))
+
+    # ── browse ────────────────────────────────────────────────────────────────
+    elif args.command == "browse":
+        try:
+            from phasma.browse import main as browse_main
+        except ImportError:
+            _err(
+                "the `browse` extra is required for `phasma browse`.\n"
+                "       install it with: pip install 'phasma[browse]'"
+            )
+        try:
+            char_w, char_h = (int(v) for v in args.char_size.lower().split("x", 1))
+        except (ValueError, AttributeError):
+            _err(f"invalid --char-size {args.char_size!r}; expected WxH, e.g. 8x17")
+        try:
+            browse_main(args.url, char_w=char_w, char_h=char_h)
+        except RuntimeError as e:
+            _err(str(e))
+        except KeyboardInterrupt:
+            pass
 
     else:
         parser.print_help()

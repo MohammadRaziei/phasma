@@ -32,6 +32,11 @@ dev = [
     "pytest>=7.0",
     "pytest-asyncio>=0.23",
 ]
+browse = [
+    "blessed>=1.20",
+    "Pillow>=9.0",
+    "pyperclip>=1.8",
+]
 
 [project.scripts]
 phasma = "phasma.__main__:main"
