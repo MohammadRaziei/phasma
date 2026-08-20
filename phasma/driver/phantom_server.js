@@ -59,7 +59,7 @@ page.viewportSize = { width: 1024, height: 768 };
 // already account for the current scroll position.
 
 function _phasmaComputeLayout(viewportW, viewportH) {
-    var results = { texts: [], images: [], texts_truncated: false };
+    var results = { texts: [], images: [], fields: [], texts_truncated: false };
     var body = document.body;
     if (!body) return results;
 
@@ -208,6 +208,27 @@ function _phasmaComputeLayout(viewportW, viewportH) {
         results.images.push({
             src: img.src, x: rect.left, y: rect.top, w: rect.width, h: rect.height,
             alt: img.alt || ''
+        });
+    }
+
+    // <input>/<textarea> values are NOT DOM text nodes - they're native
+    // form-control content, invisible to the TreeWalker above. Collect them
+    // separately so the terminal renderer can still show what's typed.
+    var fields = body.querySelectorAll('textarea, input:not([type=checkbox]):not([type=radio]):not([type=hidden]):not([type=button]):not([type=submit]):not([type=file])');
+    for (var fi = 0; fi < fields.length; fi++) {
+        var field = fields[fi];
+        if (!ancestorsVisible(field)) continue;
+        var frect = field.getBoundingClientRect();
+        if (frect.width <= 0 || frect.height <= 0) continue;
+        if (!intersectsViewport(frect)) continue;
+        var fstyle = window.getComputedStyle(field);
+        var isPassword = (field.type === 'password');
+        var rawValue = field.value || '';
+        results.fields.push({
+            value: isPassword ? new Array(rawValue.length + 1).join('\u2022') : rawValue,
+            placeholder: field.placeholder || '',
+            x: frect.left, y: frect.top, w: frect.width, h: frect.height,
+            color: fstyle.color, bg: fstyle.backgroundColor, focused: (document.activeElement === field)
         });
     }
 

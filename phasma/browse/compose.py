@@ -54,6 +54,9 @@ async def build_grid(page, cols: int, rows: int, char_w: int, char_h: int,
     # Text first (real characters, drawn as-is).
     grid.place_text_runs(layout.get("texts", []))
 
+    # Form-control values next (never DOM text nodes - see grid.py).
+    grid.place_fields(layout.get("fields", []))
+
     # Images last, so an image never gets hidden behind a stray background
     # cell but can still legitimately sit behind overlapping text.
     for img in layout.get("images", []):

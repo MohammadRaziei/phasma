@@ -15,6 +15,7 @@ from typing import Optional, Tuple
 import phasma
 
 from .compose import ImageCache, build_grid
+from .rawinput import read_key
 
 try:
     import blessed
@@ -244,13 +245,16 @@ async def _handle_normal_movement(app: BrowseApp, key) -> bool:
 
 async def _prompt_url(app: BrowseApp, loop: asyncio.AbstractEventLoop) -> Optional[str]:
     term = app.term
+    fd = sys.stdin.fileno()
     buf = app.url or ""
     while True:
         sys.stdout.write(
             term.move_xy(0, app.content_rows) + term.reverse((" URL: " + buf)[: app.cols].ljust(app.cols))
         )
         sys.stdout.flush()
-        key = await loop.run_in_executor(None, term.inkey)
+        key = await loop.run_in_executor(None, read_key, fd, None)
+        if key is None:
+            continue
         if key.name == "KEY_ENTER":
             return buf.strip() or None
         if key.name == "KEY_ESCAPE":
@@ -347,6 +351,7 @@ async def run(url: str, char_w: int = DEFAULT_CHAR_W, char_h: int = DEFAULT_CHAR
     term = blessed.Terminal()
     app = BrowseApp(term, char_w=char_w, char_h=char_h)
     loop = asyncio.get_event_loop()
+    fd = sys.stdin.fileno()
 
     with term.fullscreen(), term.cbreak(), term.hidden_cursor():
         sys.stdout.write(_MOUSE_ON)
@@ -358,7 +363,7 @@ async def run(url: str, char_w: int = DEFAULT_CHAR_W, char_h: int = DEFAULT_CHAR
 
             last_size = (term.width, term.height)
             while True:
-                key = await loop.run_in_executor(None, term.inkey, 0.3)
+                key = await loop.run_in_executor(None, read_key, fd, 0.3)
 
                 if (term.width, term.height) != last_size:
                     last_size = (term.width, term.height)
@@ -367,7 +372,7 @@ async def run(url: str, char_w: int = DEFAULT_CHAR_W, char_h: int = DEFAULT_CHAR
                     app.draw()
                     continue
 
-                if not key:
+                if key is None:
                     continue
 
                 result = await _handle_key(app, key, loop)

@@ -93,6 +93,39 @@ def test_place_text_runs_skips_plain_space_without_clobbering():
     assert grid.cells[0][2].ch == "b"  # 'b' overwrites the preset cell - only spaces are skipped
 
 
+# ── TerminalGrid.place_fields ─────────────────────────────────────────────────
+
+def test_place_fields_shows_real_value():
+    """<input> values are never DOM text nodes, so this is the only path
+    that can make typed text visible in the terminal."""
+    grid = TerminalGrid(cols=20, rows=2, char_w=8, char_h=17)
+    grid.place_fields([{"value": "hi", "x": 0, "y": 0, "w": 80, "h": 17, "color": "rgb(255,255,255)"}])
+    row_text = "".join(c.ch for c in grid.cells[0])
+    assert "hi" in row_text
+
+
+def test_place_fields_shows_placeholder_when_empty():
+    grid = TerminalGrid(cols=20, rows=2, char_w=8, char_h=17)
+    grid.place_fields([{"value": "", "placeholder": "search", "x": 0, "y": 0, "w": 80, "h": 17}])
+    row_text = "".join(c.ch for c in grid.cells[0])
+    assert "search" in row_text
+
+
+def test_place_fields_prefers_value_over_placeholder():
+    grid = TerminalGrid(cols=20, rows=2, char_w=8, char_h=17)
+    grid.place_fields([{"value": "typed", "placeholder": "placeholder text", "x": 0, "y": 0, "w": 160, "h": 17}])
+    row_text = "".join(c.ch for c in grid.cells[0])
+    assert "typed" in row_text
+    assert "placeholder" not in row_text
+
+
+def test_place_fields_multiline_textarea():
+    grid = TerminalGrid(cols=20, rows=3, char_w=8, char_h=17)
+    grid.place_fields([{"value": "line1\nline2", "x": 0, "y": 0, "w": 80, "h": 34}])
+    assert "line1" in "".join(c.ch for c in grid.cells[0])
+    assert "line2" in "".join(c.ch for c in grid.cells[1])
+
+
 # ── TerminalGrid.render_ansi ─────────────────────────────────────────────────
 
 def test_render_ansi_contains_truecolor_codes():
@@ -227,3 +260,86 @@ async def test_build_grid_places_text_and_image(page, tmp_path):
     grid = await build_grid(page, cols=40, rows=12, char_w=8, char_h=17, image_cache=cache)
     flat = "".join(c.ch for row in grid.cells for c in row)
     assert "Hello" in flat
+
+
+@pytest.mark.asyncio
+async def test_build_grid_shows_typed_input_value(page):
+    """End-to-end: type into a real input via send_key, then confirm the
+    rendered grid actually shows it - not just that .value changed."""
+    await page.set_viewport_size(300, 200)
+    await page.goto(_write_html(
+        "<html><body style='margin:0'><input id='i' style='width:150px'></body></html>"
+    ))
+    await page.evaluate("document.getElementById('i').focus()")
+    await page.send_key(text="hello")
+    cache = ImageCache()
+    grid = await build_grid(page, cols=40, rows=10, char_w=8, char_h=17, image_cache=cache)
+    flat = "".join(c.ch for row in grid.cells for c in row)
+    assert "hello" in flat
+
+
+# ── rawinput.read_key ────────────────────────────────────────────────────────
+
+def test_read_key_mouse_sequence():
+    import os
+    from phasma.browse.rawinput import read_key
+    r, w = os.pipe()
+    os.write(w, b"\x1b[<0;12;5M")
+    key = read_key(r, timeout=1)
+    assert str(key) == "\x1b[<0;12;5M"
+    assert key.name == "MOUSE"
+
+
+def test_read_key_arrow():
+    import os
+    from phasma.browse.rawinput import read_key
+    r, w = os.pipe()
+    os.write(w, b"\x1b[A")
+    key = read_key(r, timeout=1)
+    assert key.name == "KEY_UP"
+
+
+def test_read_key_printable():
+    import os
+    from phasma.browse.rawinput import read_key
+    r, w = os.pipe()
+    os.write(w, b"q")
+    key = read_key(r, timeout=1)
+    assert str(key) == "q"
+    assert key.name is None
+
+
+def test_read_key_multibyte_utf8():
+    import os
+    from phasma.browse.rawinput import read_key
+    r, w = os.pipe()
+    os.write(w, "س".encode("utf-8"))
+    key = read_key(r, timeout=1)
+    assert str(key) == "س"
+
+
+def test_read_key_timeout_returns_none():
+    import os
+    from phasma.browse.rawinput import read_key
+    r, w = os.pipe()
+    assert read_key(r, timeout=0.1) is None
+
+
+def test_read_key_lone_escape():
+    import os
+    from phasma.browse.rawinput import read_key
+    r, w = os.pipe()
+    os.write(w, b"\x1b")
+    key = read_key(r, timeout=1)
+    assert key.name == "KEY_ESCAPE"
+
+
+def test_read_key_backspace_and_enter():
+    import os
+    from phasma.browse.rawinput import read_key
+    r, w = os.pipe()
+    os.write(w, b"\x7f\r")
+    k1 = read_key(r, timeout=1)
+    k2 = read_key(r, timeout=1)
+    assert k1.name == "KEY_BACKSPACE"
+    assert k2.name == "KEY_ENTER"

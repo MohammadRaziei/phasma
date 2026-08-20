@@ -105,6 +105,48 @@ class TerminalGrid:
                 self.set(row, col, Cell(ch, fg, bg, bold, italic, underline))
             last_end_col[row] = end_col
 
+    def place_fields(self, fields: List[Dict]) -> None:
+        """Draw <input>/<textarea> boxes: a background tint across the
+        field's rect plus its current value (or a dimmed placeholder when
+        empty). Needed because form-control content is native widget state,
+        never a DOM text node — invisible to place_text_runs()."""
+        PLACEHOLDER_FG = (120, 120, 120)
+        DEFAULT_FIELD_BG = (40, 40, 40)
+        DEFAULT_FIELD_FG = (230, 230, 230)
+        CURSOR_BG = (255, 255, 255)
+        CURSOR_FG = (0, 0, 0)
+
+        for f in fields:
+            x, y, w, h = f["x"], f["y"], f["w"], f["h"]
+            row0 = int(y // self.char_h)
+            col0 = int(x // self.char_w)
+            cols = max(1, int(w // self.char_w))
+            rows = max(1, int(h // self.char_h))
+            bg = parse_css_color(f.get("bg")) or DEFAULT_FIELD_BG
+
+            for r in range(rows):
+                for c in range(cols):
+                    self.set(row0 + r, col0 + c, Cell(" ", None, bg))
+
+            value = f.get("value") or ""
+            is_placeholder = not value
+            text = f.get("placeholder", "") if is_placeholder else value
+            fg = PLACEHOLDER_FG if is_placeholder else (parse_css_color(f.get("color")) or DEFAULT_FIELD_FG)
+
+            inner_col0 = col0 + 1  # small left padding, matches typical native input padding
+            inner_cols = max(1, cols - 2)
+            lines = text.split("\n")[:rows] if text else []
+            for li, line in enumerate(lines):
+                for ci, ch in enumerate(line[:inner_cols]):
+                    self.set(row0 + li, inner_col0 + ci, Cell(ch, fg, bg))
+
+            if f.get("focused"):
+                last_line = lines[-1] if lines else ""
+                cursor_row = row0 + max(0, len(lines) - 1)
+                cursor_col = inner_col0 + min(len(last_line), inner_cols)
+                if cursor_row < row0 + rows:
+                    self.set(cursor_row, cursor_col, Cell(" ", CURSOR_FG, CURSOR_BG))
+
     def place_image_grid(self, col0: int, row0: int,
                           pixels: List[List[Tuple[Optional[RGB], Optional[RGB]]]]) -> None:
         """pixels: rows x cols grid of (fg, bg) RGB pairs from raster.py,
