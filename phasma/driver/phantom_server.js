@@ -245,6 +245,38 @@ function _phasmaComputeLayout(viewportW, viewportH) {
     return results;
 }
 
+// ── link hints (in-page function, injected via page.evaluate) ──────────────
+// Tags every clickable/focusable element currently in the viewport with a
+// temporary data-phasma-hint="hN" attribute (used as a lookup key so a
+// later, separate RPC call can find and .click() the exact element without
+// needing to hold a live JS reference across round trips) and returns each
+// one's id + rect so the terminal can overlay a label on it.
+
+function _phasmaComputeHints(viewportW, viewportH) {
+    var results = [];
+    var stale = document.querySelectorAll('[data-phasma-hint]');
+    for (var s = 0; s < stale.length; s++) stale[s].removeAttribute('data-phasma-hint');
+
+    var SELECTOR = "a[href], button, input:not([type=hidden]), textarea, select, " +
+                    "[onclick], [role=button], [role=link]";
+    var nodes = document.querySelectorAll(SELECTOR);
+    var idx = 0;
+    for (var i = 0; i < nodes.length; i++) {
+        var el = nodes[i];
+        var style = window.getComputedStyle(el);
+        if (!style || style.display === 'none' || style.visibility === 'hidden') continue;
+        var rect = el.getBoundingClientRect();
+        if (rect.width <= 0 || rect.height <= 0) continue;
+        if (rect.right <= 0 || rect.left >= viewportW || rect.bottom <= 0 || rect.top >= viewportH) continue;
+
+        var id = 'h' + idx;
+        el.setAttribute('data-phasma-hint', id);
+        results.push({ id: id, x: rect.left, y: rect.top, w: rect.width, h: rect.height, tag: el.tagName });
+        idx++;
+    }
+    return results;
+}
+
 // ── request router ────────────────────────────────────────────────────────────
 
 function handleRequest(request, response) {
@@ -481,6 +513,57 @@ function handleRequest(request, response) {
                 return { tag: tag, editable: !!editable, type: type };
             });
             ok(response, info);
+        } catch (e) {
+            err(response, e.message);
+        }
+        return;
+    }
+
+    // hints -----------------------------------------------------------------
+    // Link-hints mode (vimium-style): tags every clickable/focusable element
+    // in the viewport and returns id+rect for each so the terminal can
+    // overlay a label; hint_click(id) later performs the actual click.
+    if (action === 'hints') {
+        try {
+            var vp = page.viewportSize;
+            var targets = page.evaluate(_phasmaComputeHints, vp.width, vp.height);
+            ok(response, targets);
+        } catch (e) {
+            err(response, e.message);
+        }
+        return;
+    }
+
+    // hint_click --------------------------------------------------------------
+    if (action === 'hint_click') {
+        var hintId = params.id || '';
+        try {
+            var clicked = page.evaluate(function (id) {
+                var el = document.querySelector('[data-phasma-hint="' + id + '"]');
+                if (!el) return false;
+                el.click();
+                if (el.focus) { el.focus(); }
+                return true;
+            }, hintId);
+            if (clicked) {
+                ok(response, null);
+            } else {
+                err(response, 'hint not found: ' + hintId);
+            }
+        } catch (e) {
+            err(response, e.message);
+        }
+        return;
+    }
+
+    // clear_hints ---------------------------------------------------------------
+    if (action === 'clear_hints') {
+        try {
+            page.evaluate(function () {
+                var tagged = document.querySelectorAll('[data-phasma-hint]');
+                for (var i = 0; i < tagged.length; i++) tagged[i].removeAttribute('data-phasma-hint');
+            });
+            ok(response, null);
         } catch (e) {
             err(response, e.message);
         }

@@ -187,8 +187,9 @@ examples:
         help="Open a URL as an interactive terminal browser (browsh-like, needs phasma[browse])",
     )
     br.add_argument("url", help="URL to browse (scheme optional, defaults to https://)")
-    br.add_argument("--char-size", default="8x17", metavar="WxH",
-                     help="assumed pixel size of one terminal character cell, e.g. 8x17 (default: 8x17)")
+    br.add_argument("--char-size", default=None, metavar="WxH",
+                     help="assumed pixel size of one terminal character cell, e.g. 8x17 "
+                          "(default: auto-detected from the terminal; falls back to 8x17 if that fails)")
 
     return parser
 
@@ -289,17 +290,13 @@ def main() -> None:
 
     # ── browse ────────────────────────────────────────────────────────────────
     elif args.command == "browse":
-        try:
-            from phasma.browse import main as browse_main
-        except ImportError:
-            _err(
-                "the `browse` extra is required for `phasma browse`.\n"
-                "       install it with: pip install 'phasma[browse]'"
-            )
-        try:
-            char_w, char_h = (int(v) for v in args.char_size.lower().split("x", 1))
-        except (ValueError, AttributeError):
-            _err(f"invalid --char-size {args.char_size!r}; expected WxH, e.g. 8x17")
+        from phasma.browse import main as browse_main  # always importable - see phasma/browse/app.py
+        char_w = char_h = None
+        if args.char_size is not None:
+            try:
+                char_w, char_h = (int(v) for v in args.char_size.lower().split("x", 1))
+            except ValueError:
+                _err(f"invalid --char-size {args.char_size!r}; expected WxH, e.g. 8x17")
         try:
             browse_main(args.url, char_w=char_w, char_h=char_h)
         except RuntimeError as e:

@@ -15,7 +15,7 @@ import pytest
 import pytest_asyncio
 
 import phasma
-from phasma.browse.app import BrowseApp
+from phasma.browse.app import BrowseApp, _generate_hint_labels
 from phasma.browse.compose import ImageCache, build_grid
 from phasma.browse.grid import Cell, TerminalGrid, parse_css_color
 from phasma.browse.raster import image_to_halfblock_grid
@@ -227,6 +227,44 @@ async def test_page_scroll_and_active_element(page):
     assert ae2["tag"] == "INPUT"
 
 
+# ── integration: link hints (real Page) ─────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_page_hints_finds_clickable_elements(page):
+    await page.set_viewport_size(400, 300)
+    await page.goto(_write_html(
+        "<html><body>"
+        "<a href='#' id='l'>Link</a>"
+        "<button id='b'>Push</button>"
+        "<a href='#' style='display:none'>Hidden</a>"
+        "</body></html>"
+    ))
+    hints = await page.hints()
+    tags = sorted(h["tag"] for h in hints)
+    assert tags == ["A", "BUTTON"]  # hidden link excluded
+
+
+@pytest.mark.asyncio
+async def test_page_hint_click_activates_element(page):
+    await page.set_viewport_size(400, 300)
+    await page.goto(_write_html(
+        "<html><body><button onclick=\"document.title='HINT_CLICKED'\">Push</button></body></html>"
+    ))
+    hints = await page.hints()
+    assert len(hints) == 1
+    await page.hint_click(hints[0]["id"])
+    assert await page.evaluate("document.title") == "HINT_CLICKED"
+
+
+@pytest.mark.asyncio
+async def test_page_hints_retag_clears_stale_tags(page):
+    await page.set_viewport_size(400, 300)
+    await page.goto(_write_html("<html><body><a href='#'>A</a><button>B</button></body></html>"))
+    first = await page.hints()
+    second = await page.hints()
+    assert {h["id"] for h in first} == {h["id"] for h in second}
+
+
 @pytest.mark.asyncio
 async def test_page_mouse_event_click(page):
     await page.set_viewport_size(300, 200)
@@ -237,6 +275,44 @@ async def test_page_mouse_event_click(page):
     ))
     await page.mouse_event("click", 10, 10)
     assert await page.evaluate("document.title") == "clicked"
+
+
+# ── _generate_hint_labels ─────────────────────────────────────────────────────
+
+def test_generate_hint_labels_empty():
+    assert _generate_hint_labels(0) == []
+
+
+def test_generate_hint_labels_single_letters_within_alphabet():
+    labels = _generate_hint_labels(5)
+    assert labels == ["a", "b", "c", "d", "e"]
+
+
+def test_generate_hint_labels_all_unique():
+    labels = _generate_hint_labels(200)
+    assert len(labels) == len(set(labels)) == 200
+
+
+def test_generate_hint_labels_overflow_uses_two_letters():
+    labels = _generate_hint_labels(30)
+    assert all(len(l) == 2 for l in labels)
+
+
+# ── BrowseApp.hint_matches ────────────────────────────────────────────────────
+
+def test_hint_matches_filters_by_prefix():
+    app = BrowseApp.__new__(BrowseApp)  # skip __init__ (no real terminal needed)
+    app.hint_targets = [{"label": "a"}, {"label": "as"}, {"label": "b"}]
+    app.hint_input = "a"
+    matches = app.hint_matches()
+    assert {m["label"] for m in matches} == {"a", "as"}
+
+
+def test_hint_matches_empty_input_matches_everything():
+    app = BrowseApp.__new__(BrowseApp)
+    app.hint_targets = [{"label": "a"}, {"label": "b"}]
+    app.hint_input = ""
+    assert len(app.hint_matches()) == 2
 
 
 @pytest.mark.asyncio

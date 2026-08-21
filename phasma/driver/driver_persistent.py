@@ -224,3 +224,19 @@ class DriverPersistent(Driver):
     def active_element(self, timeout: float = 10.0) -> Optional[dict]:
         """Return {tag, editable, type} for document.activeElement, or None."""
         return self._rpc("active_element", timeout=timeout)
+
+    # ── link hints ───────────────────────────────────────────────────────────
+
+    def get_hints(self, timeout: float = 30.0) -> list:
+        """Tag every clickable/focusable element in the viewport and return
+        a list of {id, x, y, w, h, tag} for each (vimium-style link hints)."""
+        return self._rpc("hints", timeout=timeout)
+
+    def hint_click(self, hint_id: str, timeout: float = 10.0) -> None:
+        """Click the element previously tagged with *hint_id* by get_hints()."""
+        self._rpc("hint_click", {"id": hint_id}, timeout=timeout)
+
+    def clear_hints(self, timeout: float = 10.0) -> None:
+        """Remove any leftover hint tags (get_hints() also does this itself
+        before retagging, so this is mainly for an explicit cancel)."""
+        self._rpc("clear_hints", timeout=timeout)

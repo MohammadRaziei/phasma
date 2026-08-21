@@ -9,6 +9,7 @@ text selection + yank.
 from __future__ import annotations
 
 import asyncio
+import json
 import sys
 from typing import Optional, Tuple
 
@@ -33,6 +34,30 @@ DEFAULT_CHAR_H = 17
 _MOUSE_ON = "\x1b[?1000h\x1b[?1006h"
 _MOUSE_OFF = "\x1b[?1000l\x1b[?1006l"
 
+
+def detect_char_size(fd: int) -> Optional[Tuple[int, int]]:
+    """Ask the tty for its real pixel dimensions (TIOCGWINSZ) and derive the
+    actual on-screen size of one character cell from them. This matters a
+    lot: if the assumed cell size is wrong, every click lands on the wrong
+    DOM coordinates even though the click mechanism itself works fine -
+    which looks exactly like "clicking doesn't work". Not all terminals
+    fill in the pixel fields (many report 0), in which case this returns
+    None and the caller should fall back to a fixed default."""
+    import fcntl
+    import struct
+    import termios
+
+    try:
+        packed = fcntl.ioctl(fd, termios.TIOCGWINSZ, struct.pack("HHHH", 0, 0, 0, 0))
+        rows, cols, xpixel, ypixel = struct.unpack("HHHH", packed)
+    except OSError:
+        return None
+    if not (rows and cols and xpixel and ypixel):
+        return None
+    char_w = max(1, xpixel // cols)
+    char_h = max(1, ypixel // rows)
+    return char_w, char_h
+
 _SPECIAL_KEY_NAMES = {
     "KEY_BACKSPACE": "Backspace",
     "KEY_DELETE": "Delete",
@@ -48,6 +73,23 @@ _SPECIAL_KEY_NAMES = {
 }
 
 
+_HINT_ALPHABET = "abcdefghijklmnopqrstuvwxyz"
+
+
+def _generate_hint_labels(n: int) -> list:
+    """Short, easy-to-type labels for n targets: single letters first, then
+    2-letter combinations once the alphabet is exhausted (vimium-style)."""
+    if n <= 0:
+        return []
+    if n <= len(_HINT_ALPHABET):
+        return list(_HINT_ALPHABET[:n])
+    import itertools
+    length = 2
+    while len(_HINT_ALPHABET) ** length < n:
+        length += 1
+    return ["".join(c) for c in itertools.islice(itertools.product(_HINT_ALPHABET, repeat=length), n)]
+
+
 def _normalize_url(url: str) -> str:
     if "://" not in url:
         return "https://" + url
@@ -55,6 +97,8 @@ def _normalize_url(url: str) -> str:
 
 
 class BrowseApp:
+    DEBOUNCE_SECONDS = 0.35
+
     def __init__(self, term: "blessed.Terminal", char_w: int = DEFAULT_CHAR_W,
                  char_h: int = DEFAULT_CHAR_H) -> None:
         self.term = term
@@ -63,13 +107,19 @@ class BrowseApp:
         self.browser = None
         self.page = None
         self.url: Optional[str] = None
-        self.mode = "normal"  # normal | insert | visual
+        self.mode = "normal"  # normal | insert | visual | hint
         self.status = ""
         self.image_cache = ImageCache()
         self.grid = None
         self.selecting = False
         self.selection_start: Optional[Tuple[int, int]] = None
         self.selection_end: Optional[Tuple[int, int]] = None
+        self.char_size_detected = False
+        self.hint_targets: list = []  # [{id, x, y, w, h, tag, label}, ...]
+        self.hint_input = ""
+        self.pending_field: Optional[dict] = None  # rect/value snapshot of the focused field
+        self.pending_value: Optional[str] = None    # locally-buffered, not-yet-sent value
+        self.pending_task: Optional[asyncio.Task] = None
 
     @property
     def content_rows(self) -> int:
@@ -118,11 +168,30 @@ class BrowseApp:
         term = self.term
         out = [term.home]
         if self.grid:
-            out.append(self._render_with_selection())
+            if self.mode == "hint":
+                out.append(self._render_with_hints())
+            else:
+                out.append(self._render_with_selection())
         out.append("\n")
         out.append(term.reverse(self._status_bar()[: self.cols].ljust(self.cols)))
         sys.stdout.write("".join(out))
         sys.stdout.flush()
+
+    def _render_with_hints(self) -> str:
+        base = self.grid.render_ansi()
+        term = self.term
+        overlay = [base]
+        for h in self.hint_targets:
+            label = h["label"]
+            if self.hint_input and not label.startswith(self.hint_input):
+                continue  # narrowed out - don't clutter the screen with non-matches
+            row = int(h["y"] // self.char_h)
+            col = int(h["x"] // self.char_w)
+            if not (0 <= row < self.grid.rows and 0 <= col < self.grid.cols):
+                continue
+            text = label.upper()[: max(1, self.grid.cols - col)]
+            overlay.append(term.move_xy(col, row) + term.black_on_yellow(text))
+        return "".join(overlay)
 
     def _render_with_selection(self) -> str:
         if not (self.mode == "visual" and self.selection_start and self.selection_end):
@@ -149,19 +218,156 @@ class BrowseApp:
         sys.stdout.flush()
 
     def _status_bar(self) -> str:
-        tag = {"normal": "", "insert": "-- INSERT --  ", "visual": "-- VISUAL (y=yank) --  "}[self.mode]
-        return f" {tag}{self.status}   [q]uit [u]rl [r]eload [v]isual  h/l:scroll< > "
+        tag = {
+            "normal": "", "insert": "-- INSERT --  ", "visual": "-- VISUAL (y=yank) --  ",
+            "hint": f"-- HINT ({self.hint_input}) --  ",
+        }[self.mode]
+        size_note = f"{self.char_w}x{self.char_h}{'' if self.char_size_detected else '?'}"
+        return f" {tag}{self.status}   [q]uit [u]rl [r]eload [v]isual [f]ollow  [{size_note}]"
+
+    # ── link hints ───────────────────────────────────────────────────────────
+
+    async def enter_hint_mode(self) -> None:
+        raw = await self.page.hints()
+        labels = _generate_hint_labels(len(raw))
+        for target, label in zip(raw, labels):
+            target["label"] = label
+        self.hint_targets = raw
+        self.hint_input = ""
+        self.mode = "hint" if raw else "normal"
+        if not raw:
+            self.status = "No clickable elements in view"
+
+    def hint_matches(self) -> list:
+        return [h for h in self.hint_targets if h["label"].startswith(self.hint_input)]
+
+    async def activate_hint(self, label: str) -> None:
+        match = next((h for h in self.hint_targets if h["label"] == label), None)
+        self.exit_hint_mode()
+        if match is None:
+            return
+        await self.page.hint_click(match["id"])
+        active = await self.page.active_element()
+        if active and active.get("editable"):
+            self.mode = "insert"
+            self.pending_field = await self._fetch_active_field()
+            self.pending_value = self.pending_field.get("value", "") if self.pending_field else None
+
+    def exit_hint_mode(self) -> None:
+        self.mode = "normal"
+        self.hint_targets = []
+        self.hint_input = ""
 
     # ── actions ──────────────────────────────────────────────────────────────
 
     async def click_at(self, col: int, row: int) -> None:
+        # Switching targets while mid-edit must not silently drop what was typed.
+        if self.mode == "insert" and self.pending_value is not None:
+            self.cancel_pending_flush()
+            await self.flush_pending_value()
+
         px_x, px_y = col * self.char_w, row * self.char_h
         await self.page.mouse_event("click", px_x, px_y)
         active = await self.page.active_element()
-        self.mode = "insert" if (active and active.get("editable")) else "normal"
+        if active and active.get("editable"):
+            self.mode = "insert"
+            self.pending_field = await self._fetch_active_field()
+            self.pending_value = self.pending_field.get("value", "") if self.pending_field else None
+        else:
+            self.mode = "normal"
+            self.pending_field = None
+            self.pending_value = None
 
     async def scroll(self, dx: int = 0, dy: int = 0, *, absolute: bool = False) -> None:
         await self.page.scroll(dx=dx, dy=dy, absolute=absolute)
+
+    async def _fetch_active_field(self) -> Optional[dict]:
+        """The rect + current value + placeholder of document.activeElement,
+        if it's an editable field. One RPC instead of a full layout() call."""
+        js = (
+            "(function(){var el=document.activeElement;"
+            "if(!el)return null;"
+            "var t=el.tagName;"
+            "if(t!=='INPUT'&&t!=='TEXTAREA')return null;"
+            "var r=el.getBoundingClientRect();"
+            "return JSON.stringify({value:el.value||'',placeholder:el.placeholder||'',"
+            "x:r.left,y:r.top,w:r.width,h:r.height,isPassword:el.type==='password'});"
+            "})()"
+        )
+        raw = await self.page.evaluate(js)
+        if not raw:
+            return None
+        try:
+            return json.loads(raw)
+        except (TypeError, ValueError):
+            return None
+
+    def _patch_local_field_display(self) -> None:
+        """Redraw just the focused field's cells from the local buffer -
+        instant, no RPC. The real page isn't touched until a debounced
+        flush fires or the field loses focus (see DEBOUNCE_SECONDS)."""
+        if not (self.grid and self.pending_field is not None):
+            return
+        value = self.pending_value or ""
+        if self.pending_field.get("isPassword"):
+            value = "\u2022" * len(value)
+        self.grid.place_fields([{**self.pending_field, "value": value, "focused": True}])
+
+    def cancel_pending_flush(self) -> None:
+        if self.pending_task is not None and not self.pending_task.done():
+            self.pending_task.cancel()
+        self.pending_task = None
+
+    async def flush_pending_value(self) -> None:
+        """Push the locally-buffered value to the real page in one RPC
+        (instead of one round-trip per keystroke), firing input/change so
+        page JS (search-as-you-type, validation, ...) still sees it."""
+        if self.pending_value is None:
+            return
+        js = (
+            "(function(v){var el=document.activeElement;"
+            "if(!el)return false;"
+            "el.value=v;"
+            "el.dispatchEvent(new Event('input',{bubbles:true}));"
+            "el.dispatchEvent(new Event('change',{bubbles:true}));"
+            "return true;})(%s)" % json.dumps(self.pending_value)
+        )
+        try:
+            await self.page.evaluate(js)
+        except Exception:  # noqa: BLE001 - best-effort; a stale/gone element shouldn't crash the app
+            pass
+
+    async def _debounced_flush(self) -> None:
+        try:
+            await asyncio.sleep(self.DEBOUNCE_SECONDS)
+        except asyncio.CancelledError:
+            return
+        await self.flush_pending_value()
+        await self.refresh_grid()
+        self.draw()
+
+    def schedule_flush(self) -> None:
+        self.cancel_pending_flush()
+        self.pending_task = asyncio.ensure_future(self._debounced_flush())
+
+    async def local_type_char(self, ch: str) -> None:
+        """Echo a character instantly with no network round-trip; the real
+        page is updated after DEBOUNCE_SECONDS of no typing, or immediately
+        on Enter/Escape/Tab/click-elsewhere."""
+        if self.pending_value is None:
+            await self.page.send_key(text=ch)  # no field info available - fall back to direct send
+            return
+        self.pending_value += ch
+        self._patch_local_field_display()
+        self.schedule_flush()
+
+    async def local_backspace(self) -> None:
+        if self.pending_value is None:
+            await self.page.send_key(special="Backspace")
+            return
+        self.pending_value = self.pending_value[:-1]
+        self._patch_local_field_display()
+        self.schedule_flush()
 
     async def type_char(self, ch: str) -> None:
         await self.page.send_key(text=ch)
@@ -170,10 +376,14 @@ class BrowseApp:
         await self.page.send_key(special=name)
 
     async def exit_insert(self) -> None:
+        self.cancel_pending_flush()
+        await self.flush_pending_value()
         await self.page.evaluate(
             "document.activeElement && document.activeElement.blur && document.activeElement.blur();"
         )
         self.mode = "normal"
+        self.pending_field = None
+        self.pending_value = None
 
     def yank_selection(self) -> None:
         if not (self.selection_start and self.selection_end and self.grid):
@@ -266,7 +476,9 @@ async def _prompt_url(app: BrowseApp, loop: asyncio.AbstractEventLoop) -> Option
 
 
 async def _handle_key(app: BrowseApp, key, loop: asyncio.AbstractEventLoop):
-    """Returns True if a redraw+refresh is needed, "quit" to exit, False otherwise."""
+    """Returns "quit" to exit, True if a full refresh+redraw is needed,
+    "local" if only a redraw is needed (state already patched locally, no
+    RPC - see local_type_char/local_backspace), or False for no change."""
     seq = str(key)
 
     if seq.startswith("\x1b[<"):
@@ -280,6 +492,8 @@ async def _handle_key(app: BrowseApp, key, loop: asyncio.AbstractEventLoop):
             await app.scroll(dx=-40 if ev["btn"] == 66 else 40)
             return True
         if ev["btn"] in (0, 1, 2):
+            if app.mode == "hint":
+                app.exit_hint_mode()
             if app.mode == "visual":
                 if ev["pressed"] and app.selection_start is None:
                     app.selection_start = (ev["row"], ev["col"])
@@ -290,25 +504,50 @@ async def _handle_key(app: BrowseApp, key, loop: asyncio.AbstractEventLoop):
                 return True
         return False
 
+    if app.mode == "hint":
+        if key.name == "KEY_ESCAPE":
+            app.exit_hint_mode()
+            return True
+        if key.name == "KEY_BACKSPACE":
+            app.hint_input = app.hint_input[:-1]
+            return "local"
+        if seq and seq.isalpha():
+            candidate = app.hint_input + seq.lower()
+            matches = [h for h in app.hint_targets if h["label"].startswith(candidate)]
+            if not matches:
+                return False  # not a valid next character - ignore, keep current input
+            app.hint_input = candidate
+            if len(matches) == 1 and matches[0]["label"] == app.hint_input:
+                await app.activate_hint(app.hint_input)
+                return True
+            return "local"
+        return False
+
     if app.mode == "insert":
         if key.name == "KEY_ESCAPE":
             await app.exit_insert()
             return True
         if key.name == "KEY_BACKSPACE":
-            await app.special_key("Backspace")
-            return True
+            await app.local_backspace()
+            return "local"
         if key.name == "KEY_ENTER":
-            await app.special_key("Enter")
+            app.cancel_pending_flush()
+            await app.flush_pending_value()
+            await app.special_key("Enter")  # let page JS (submit/search-on-Enter) react too
             return True
         if key.name == "KEY_TAB":
+            app.cancel_pending_flush()
+            await app.flush_pending_value()
             await app.special_key("Tab")
             return True
         if key.name in _SPECIAL_KEY_NAMES:
+            app.cancel_pending_flush()
+            await app.flush_pending_value()
             await app.special_key(_SPECIAL_KEY_NAMES[key.name])
             return True
         if seq and seq.isprintable():
-            await app.type_char(seq)
-            return True
+            await app.local_type_char(seq)
+            return "local"
         return False
 
     if app.mode == "visual":
@@ -336,22 +575,31 @@ async def _handle_key(app: BrowseApp, key, loop: asyncio.AbstractEventLoop):
     if seq == "v":
         app.mode, app.selection_start, app.selection_end = "visual", None, None
         return True
+    if seq == "f":
+        await app.enter_hint_mode()
+        return True
 
     return await _handle_normal_movement(app, key)
 
 
 # ── entry point ──────────────────────────────────────────────────────────────
 
-async def run(url: str, char_w: int = DEFAULT_CHAR_W, char_h: int = DEFAULT_CHAR_H) -> None:
+async def run(url: str, char_w: Optional[int] = None, char_h: Optional[int] = None) -> None:
     if blessed is None:
         raise RuntimeError(
             "The `browse` extra is required for `phasma browse`. "
             "Install it with: pip install 'phasma[browse]'"
         )
     term = blessed.Terminal()
-    app = BrowseApp(term, char_w=char_w, char_h=char_h)
-    loop = asyncio.get_event_loop()
     fd = sys.stdin.fileno()
+
+    detected = detect_char_size(fd) if (char_w is None or char_h is None) else None
+    resolved_w = char_w if char_w is not None else (detected[0] if detected else DEFAULT_CHAR_W)
+    resolved_h = char_h if char_h is not None else (detected[1] if detected else DEFAULT_CHAR_H)
+
+    app = BrowseApp(term, char_w=resolved_w, char_h=resolved_h)
+    app.char_size_detected = detected is not None
+    loop = asyncio.get_event_loop()
 
     with term.fullscreen(), term.cbreak(), term.hidden_cursor():
         sys.stdout.write(_MOUSE_ON)
@@ -378,15 +626,25 @@ async def run(url: str, char_w: int = DEFAULT_CHAR_W, char_h: int = DEFAULT_CHAR
                 result = await _handle_key(app, key, loop)
                 if result == "quit":
                     break
-                if result:
+                if result == "local":
+                    pass  # already patched app.grid directly - just redraw
+                elif result:
                     await app.refresh_grid()
                 app.draw()
         finally:
             sys.stdout.write(_MOUSE_OFF)
             sys.stdout.flush()
+            if app.mode == "insert":
+                app.cancel_pending_flush()
+                try:
+                    await app.flush_pending_value()
+                except Exception:  # noqa: BLE001 - best-effort on the way out
+                    pass
             await app.stop()
 
 
-def main(url: str, char_w: int = DEFAULT_CHAR_W, char_h: int = DEFAULT_CHAR_H) -> None:
-    """Synchronous entry point used by the `phasma browse` CLI subcommand."""
+def main(url: str, char_w: Optional[int] = None, char_h: Optional[int] = None) -> None:
+    """Synchronous entry point used by the `phasma browse` CLI subcommand.
+    char_w/char_h of None means: auto-detect from the terminal's real pixel
+    size (falls back to an 8x17 guess if the terminal doesn't report one)."""
     asyncio.run(run(url, char_w=char_w, char_h=char_h))

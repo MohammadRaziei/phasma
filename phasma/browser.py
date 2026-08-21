@@ -238,6 +238,32 @@ class Page:
             lambda: self._driver.active_element(),
         )
 
+    # link hints -------------------------------------------------------------
+
+    async def hints(self) -> list:
+        """Tag every clickable/focusable element in the viewport and return
+        a list of {id, x, y, w, h, tag} for each (vimium-style link hints)."""
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(
+            None,
+            lambda: self._driver.get_hints(),
+        )
+
+    async def hint_click(self, hint_id: str) -> None:
+        """Click the element previously tagged with *hint_id* by hints()."""
+        loop = asyncio.get_event_loop()
+        await loop.run_in_executor(
+            None,
+            lambda: self._driver.hint_click(hint_id),
+        )
+
+    async def clear_hints(self) -> None:
+        loop = asyncio.get_event_loop()
+        await loop.run_in_executor(
+            None,
+            lambda: self._driver.clear_hints(),
+        )
+
     # media --------------------------------------------------------------------
 
     async def screenshot(

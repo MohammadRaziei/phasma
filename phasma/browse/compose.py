@@ -5,20 +5,15 @@ most images are static across redraws) and places those.
 """
 from __future__ import annotations
 
-import hashlib
-import tempfile
-from pathlib import Path
+import asyncio
 from typing import Dict
 
 from .grid import TerminalGrid
-from .raster import image_to_halfblock_grid
-
-_TMP_DIR = Path(tempfile.gettempdir()) / "phasma-browse"
-_TMP_DIR.mkdir(exist_ok=True)
+from .raster import fetch_image_bytes, image_to_halfblock_grid
 
 
 class ImageCache:
-    """Caches rasterized <img> screenshots by (src, on-screen size) so a
+    """Caches rasterized <img> pixel grids by (src, on-screen size) so a
     redraw triggered by e.g. typing in an unrelated field doesn't re-render
     every image on the page again."""
 
@@ -31,13 +26,38 @@ class ImageCache:
         cached = self._cache.get(key)
         if cached is not None:
             return cached
-        digest = hashlib.sha1(key.encode("utf-8", "ignore")).hexdigest()[:16]
-        path = _TMP_DIR / f"{digest}.png"
+
+        loop = asyncio.get_event_loop()
+        grid = []
         try:
-            await page.region_screenshot(path, left, top, width, height)
-            grid = image_to_halfblock_grid(str(path), cols, rows)
+            # Prefer fetching the image's own bytes: this preserves real
+            # transparency. A page screenshot of the region would instead
+            # capture the already-composited (opaque) result, baking in
+            # whatever the page's background happens to be behind it.
+            data = await loop.run_in_executor(None, fetch_image_bytes, src)
+            if data:
+                grid = await loop.run_in_executor(None, image_to_halfblock_grid, data, cols, rows)
         except Exception:
             grid = []
+
+        if not grid:
+            # Fallback for images the direct fetch can't reach (auth-gated,
+            # CORS, blob:/canvas-drawn content): screenshot the rendered
+            # region instead. This loses true transparency but still shows
+            # something rather than nothing.
+            try:
+                import hashlib
+                import tempfile
+                from pathlib import Path
+                tmp_dir = Path(tempfile.gettempdir()) / "phasma-browse"
+                tmp_dir.mkdir(exist_ok=True)
+                digest = hashlib.sha1(key.encode("utf-8", "ignore")).hexdigest()[:16]
+                path = tmp_dir / f"{digest}.png"
+                await page.region_screenshot(path, left, top, width, height)
+                grid = await loop.run_in_executor(None, image_to_halfblock_grid, str(path), cols, rows)
+            except Exception:
+                grid = []
+
         self._cache[key] = grid
         return grid
 
