@@ -306,6 +306,47 @@ async def test_page_hints_retag_clears_stale_tags(page):
     assert {h["id"] for h in first} == {h["id"] for h in second}
 
 
+# ── integration: find-in-page (real Page) ───────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_page_find_text_finds_all_matches_case_insensitive(page):
+    await page.set_viewport_size(400, 300)
+    await page.goto(_write_html(
+        "<html><body><p>The quick brown FOX jumps over the lazy fox.</p></body></html>"
+    ))
+    result = await page.find_text("fox", 0)
+    assert result["found"] is True
+    assert result["total"] == 2
+
+
+@pytest.mark.asyncio
+async def test_page_find_text_wraps_around(page):
+    await page.set_viewport_size(400, 300)
+    await page.goto(_write_html("<html><body><p>fox fox fox</p></body></html>"))
+    result = await page.find_text("fox", 3)  # one past the last (index 2) -> wraps to 0
+    assert result["index"] == 0
+
+
+@pytest.mark.asyncio
+async def test_page_find_text_no_match(page):
+    await page.set_viewport_size(400, 300)
+    await page.goto(_write_html("<html><body><p>nothing relevant here</p></body></html>"))
+    result = await page.find_text("zzzznomatch", 0)
+    assert result == {"found": False, "total": 0}
+
+
+@pytest.mark.asyncio
+async def test_page_find_text_scrolls_far_match_into_view(page):
+    await page.set_viewport_size(400, 300)
+    html = "<html><body>" + "<p>filler</p>" * 60 + "<p>needle here</p></body></html>"
+    await page.goto(_write_html(html))
+    before = await page.evaluate("window.pageYOffset")
+    result = await page.find_text("needle", 0)
+    after = await page.evaluate("window.pageYOffset")
+    assert result["found"] is True
+    assert after > before
+
+
 @pytest.mark.asyncio
 async def test_page_mouse_event_click(page):
     await page.set_viewport_size(300, 200)
@@ -433,6 +474,23 @@ def test_hint_matches_empty_input_matches_everything():
     assert len(app.hint_matches()) == 2
 
 
+# ── BrowseApp.yank_url ────────────────────────────────────────────────────────
+
+def test_yank_url_sets_status_even_without_clipboard_tool(monkeypatch):
+    """pyperclip.copy() can raise (no xclip/xsel/pbcopy installed) - must
+    still leave a useful status message, never crash."""
+    from phasma.browse import app as app_module
+    app = BrowseApp.__new__(BrowseApp)
+    app.url = "https://example.com/page"
+    if app_module.pyperclip is not None:
+        monkeypatch.setattr(
+            app_module.pyperclip, "copy",
+            lambda *_: (_ for _ in ()).throw(Exception("no clipboard tool")),
+        )
+    app.yank_url()
+    assert "example.com" in app.status
+
+
 # ── CSP safety: active_field/set_active_value/blur_active must not use eval() ─
 # (the generic string-based evaluate() calls eval() internally and is
 # silently blocked by any page whose CSP lacks 'unsafe-eval' - most real
@@ -530,6 +588,39 @@ async def test_build_grid_shows_typed_input_value(page):
     grid = await build_grid(page, cols=40, rows=10, char_w=8, char_h=17, image_cache=cache)
     flat = "".join(c.ch for row in grid.cells for c in row)
     assert "hello" in flat
+
+
+@pytest.mark.asyncio
+async def test_browseapp_do_find_updates_status_and_highlight(page):
+    from phasma.browse.app import BrowseApp
+    await page.set_viewport_size(300, 200)
+    await page.goto(_write_html("<html><body><p>find this needle please</p></body></html>"))
+    app = BrowseApp.__new__(BrowseApp)
+    app.page = page
+    app.search_query = "needle"
+    app.search_index = 0
+    app.search_match_rect = None
+    app.status = ""
+    await app.do_find(0)
+    assert app.search_match_rect is not None
+    assert "needle" in app.status
+    assert "1/1" in app.status
+
+
+@pytest.mark.asyncio
+async def test_browseapp_do_find_no_match_clears_highlight(page):
+    from phasma.browse.app import BrowseApp
+    await page.set_viewport_size(300, 200)
+    await page.goto(_write_html("<html><body><p>hello world</p></body></html>"))
+    app = BrowseApp.__new__(BrowseApp)
+    app.page = page
+    app.search_query = "zzznomatch"
+    app.search_index = 0
+    app.search_match_rect = {"x": 1, "y": 1, "w": 1, "h": 1}  # stale, from a previous search
+    app.status = ""
+    await app.do_find(0)
+    assert app.search_match_rect is None
+    assert "not found" in app.status.lower()
 
 
 # ── rawinput.read_key ────────────────────────────────────────────────────────

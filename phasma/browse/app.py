@@ -74,6 +74,40 @@ _SPECIAL_KEY_NAMES = {
 
 _HINT_ALPHABET = "abcdefghijklmnopqrstuvwxyz"
 
+_HELP_TEXT = """
+ phasma browse -- keys
+
+ NORMAL MODE
+   j / k / down / up        scroll down / up
+   h / l / left / right     scroll left / right
+   Space / PgDn             page down
+   b / PgUp                 page up
+   g / Home                 scroll to top
+   G                        scroll to bottom
+   mouse click / wheel      click element / scroll
+   f                        link hints -- type the label to click
+   v                        visual mode (select + yank)
+   /                        find in page
+   n / N                    next / previous match
+   y                        yank (copy) the current URL
+   u                        edit the URL
+   r                        reload
+   ?                        this help
+   q                        quit
+
+ INSERT MODE (after clicking/hinting a text field)
+   type normally            shown instantly, sent after a short pause
+   Enter                    send now, then a real Enter keypress
+   Esc                      send now, exit insert mode
+
+ VISUAL MODE
+   movement keys / drag     extend the selection
+   y                        yank selection to clipboard
+   Esc / v                  cancel
+
+ -- press any key to close --
+"""
+
 
 def _generate_hint_labels(n: int) -> list:
     """Short, easy-to-type labels for n targets: single letters first, then
@@ -119,6 +153,9 @@ class BrowseApp:
         self.pending_field: Optional[dict] = None  # rect/value snapshot of the focused field
         self.pending_value: Optional[str] = None    # locally-buffered, not-yet-sent value
         self.pending_task: Optional[asyncio.Task] = None
+        self.search_query: Optional[str] = None
+        self.search_index = 0
+        self.search_match_rect: Optional[dict] = None
 
     @property
     def content_rows(self) -> int:
@@ -151,6 +188,8 @@ class BrowseApp:
         except Exception as exc:  # noqa: BLE001 - surfaced to the status bar, not fatal
             self.status = f"Failed to load {url}: {exc}"
         self.image_cache.clear()
+        self.search_query = None
+        self.search_match_rect = None
 
     async def resize_viewport(self) -> None:
         await self.page.set_viewport_size(self.cols * self.char_w, self.content_rows * self.char_h)
@@ -166,15 +205,37 @@ class BrowseApp:
     def draw(self) -> None:
         term = self.term
         out = [term.home]
-        if self.grid:
+        if self.mode == "help":
+            out.append(self._render_help())
+        elif self.grid:
             if self.mode == "hint":
                 out.append(self._render_with_hints())
             else:
                 out.append(self._render_with_selection())
+            if self.search_match_rect:
+                out.append(self._render_search_highlight())
         out.append("\n")
         out.append(term.reverse(self._status_bar()[: self.cols].ljust(self.cols)))
         sys.stdout.write("".join(out))
         sys.stdout.flush()
+
+    def _render_search_highlight(self) -> str:
+        r = self.search_match_rect
+        row = int(r["y"] // self.char_h)
+        if not (0 <= row < self.grid.rows):
+            return ""
+        col0 = max(0, min(int(r["x"] // self.char_w), self.grid.cols - 1))
+        col1 = max(col0 + 1, min(int((r["x"] + r["w"]) // self.char_w), self.grid.cols))
+        text = "".join(cell.ch for cell in self.grid.cells[row][col0:col1])
+        return self.term.move_xy(col0, row) + self.term.black_on_green(text)
+
+    def _render_help(self) -> str:
+        lines = _HELP_TEXT.strip("\n").splitlines()
+        out = []
+        for i in range(self.content_rows):
+            line = lines[i] if i < len(lines) else ""
+            out.append(self.term.move_xy(0, i) + line[: self.cols].ljust(self.cols))
+        return "".join(out)
 
     def _render_with_hints(self) -> str:
         base = self.grid.render_ansi()
@@ -219,10 +280,10 @@ class BrowseApp:
     def _status_bar(self) -> str:
         tag = {
             "normal": "", "insert": "-- INSERT --  ", "visual": "-- VISUAL (y=yank) --  ",
-            "hint": f"-- HINT ({self.hint_input}) --  ",
+            "hint": f"-- HINT ({self.hint_input}) --  ", "help": "-- HELP (any key closes) --  ",
         }[self.mode]
         size_note = f"{self.char_w}x{self.char_h}{'' if self.char_size_detected else '?'}"
-        return f" {tag}{self.status}   [q]uit [u]rl [r]eload [v]isual [f]ollow  [{size_note}]"
+        return f" {tag}{self.status}   [q]uit [u]rl [r]eload [v]isual [f]ollow [/]find [?]help  [{size_note}]"
 
     # ── link hints ───────────────────────────────────────────────────────────
 
@@ -256,6 +317,31 @@ class BrowseApp:
         self.mode = "normal"
         self.hint_targets = []
         self.hint_input = ""
+
+    # ── find-in-page ─────────────────────────────────────────────────────────
+
+    async def do_find(self, index: int) -> None:
+        if not self.search_query:
+            return
+        result = await self.page.find_text(self.search_query, index)
+        if result.get("found"):
+            self.search_index = result["index"]
+            self.search_match_rect = {k: result[k] for k in ("x", "y", "w", "h")}
+            self.status = f"/{self.search_query}  [{result['index'] + 1}/{result['total']}]"
+        else:
+            self.search_match_rect = None
+            self.status = f"Pattern not found: {self.search_query}"
+
+    def yank_url(self) -> None:
+        url = self.url or ""
+        if pyperclip is not None:
+            try:
+                pyperclip.copy(url)
+                self.status = "Copied URL to clipboard"
+                return
+            except Exception:  # noqa: BLE001 - clipboard tools (xclip/xsel/pbcopy) may be missing
+                pass
+        self.status = f"URL (install xclip/xsel to copy): {url}"
 
     # ── actions ──────────────────────────────────────────────────────────────
 
@@ -431,13 +517,14 @@ async def _handle_normal_movement(app: BrowseApp, key) -> bool:
     return False
 
 
-async def _prompt_url(app: BrowseApp, loop: asyncio.AbstractEventLoop) -> Optional[str]:
+async def _prompt_text(app: BrowseApp, loop: asyncio.AbstractEventLoop, label: str,
+                        initial: str = "") -> Optional[str]:
     term = app.term
     fd = sys.stdin.fileno()
-    buf = app.url or ""
+    buf = initial
     while True:
         sys.stdout.write(
-            term.move_xy(0, app.content_rows) + term.reverse((" URL: " + buf)[: app.cols].ljust(app.cols))
+            term.move_xy(0, app.content_rows) + term.reverse((label + buf)[: app.cols].ljust(app.cols))
         )
         sys.stdout.flush()
         key = await loop.run_in_executor(None, read_key, fd, None)
@@ -458,6 +545,10 @@ async def _handle_key(app: BrowseApp, key, loop: asyncio.AbstractEventLoop):
     "local" if only a redraw is needed (state already patched locally, no
     RPC - see local_type_char/local_backspace), or False for no change."""
     seq = str(key)
+
+    if app.mode == "help":
+        app.mode = "normal"
+        return True
 
     if seq.startswith("\x1b[<"):
         ev = app.parse_mouse(seq[2:])
@@ -542,7 +633,7 @@ async def _handle_key(app: BrowseApp, key, loop: asyncio.AbstractEventLoop):
     if seq == "q":
         return "quit"
     if seq == "u":
-        new_url = await _prompt_url(app, loop)
+        new_url = await _prompt_text(app, loop, " URL: ", app.url or "")
         if new_url:
             await app.navigate(new_url)
             return True
@@ -556,6 +647,28 @@ async def _handle_key(app: BrowseApp, key, loop: asyncio.AbstractEventLoop):
     if seq == "f":
         await app.enter_hint_mode()
         return True
+    if seq == "?":
+        app.mode = "help"
+        return True
+    if seq == "/":
+        query = await _prompt_text(app, loop, " Find: ")
+        if query:
+            app.search_query = query
+            await app.do_find(0)
+            return True
+        return False
+    if seq == "n" and app.search_query:
+        await app.do_find(app.search_index + 1)
+        return True
+    if seq == "N" and app.search_query:
+        await app.do_find(app.search_index - 1)
+        return True
+    if seq == "y":
+        app.yank_url()
+        return "local"
+    if key.name == "KEY_ESCAPE" and app.search_match_rect:
+        app.search_match_rect = None
+        return "local"
 
     return await _handle_normal_movement(app, key)
 

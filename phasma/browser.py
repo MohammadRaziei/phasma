@@ -290,6 +290,18 @@ class Page:
             lambda: self._driver.clear_hints(),
         )
 
+    # find-in-page --------------------------------------------------------------
+
+    async def find_text(self, query: str, index: int = 0) -> Dict:
+        """Whole-document (not viewport-limited) case-insensitive search.
+        Scrolls the match at *index* (wraps around) into view and returns
+        {found, total, index, x, y, w, h} - or {found: False, total: 0}."""
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(
+            None,
+            lambda: self._driver.find_text(query, index),
+        )
+
     # media --------------------------------------------------------------------
 
     async def screenshot(

@@ -256,3 +256,12 @@ class DriverPersistent(Driver):
         """Remove any leftover hint tags (get_hints() also does this itself
         before retagging, so this is mainly for an explicit cancel)."""
         self._rpc("clear_hints", timeout=timeout)
+
+    # ── find-in-page ─────────────────────────────────────────────────────────
+
+    def find_text(self, query: str, index: int = 0, timeout: float = 15.0) -> dict:
+        """Whole-document (not viewport-limited) case-insensitive search.
+        Scrolls the match at *index* (wraps around) into view and returns
+        {found, total, index, x, y, w, h} - or {found: False, total: 0} if
+        there are no matches at all."""
+        return self._rpc("find_text", {"query": query, "index": index}, timeout=timeout)

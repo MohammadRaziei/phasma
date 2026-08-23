@@ -296,6 +296,58 @@ function _phasmaComputeLayout(viewportW, viewportH) {
     return results;
 }
 
+// ── find-in-page (in-page function, injected via page.evaluate) ────────────
+// Whole-document (not viewport-limited) case-insensitive text search.
+// Scrolls the requested match into view and returns its post-scroll rect.
+// A match that spans more than one DOM text node is skipped (rare, and
+// not worth the added complexity here).
+
+function _phasmaFindText(query, matchIndex) {
+    if (!query) return { found: false, total: 0 };
+    var q = String(query).toLowerCase();
+    var walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null, false);
+    var node;
+    var matches = [];
+    var MAX_MATCHES = 2000;
+
+    while ((node = walker.nextNode())) {
+        var parentTag = node.parentElement ? node.parentElement.tagName : '';
+        if (parentTag === 'SCRIPT' || parentTag === 'STYLE' || parentTag === 'NOSCRIPT' ||
+            parentTag === 'TITLE' || parentTag === 'TEMPLATE') continue;
+        var raw = node.nodeValue;
+        if (!raw) continue;
+        var lower = raw.toLowerCase();
+        var pos = 0;
+        while (true) {
+            var idx = lower.indexOf(q, pos);
+            if (idx < 0) break;
+            matches.push({ node: node, start: idx, end: idx + q.length });
+            pos = idx + q.length;
+            if (matches.length >= MAX_MATCHES) break;
+        }
+        if (matches.length >= MAX_MATCHES) break;
+    }
+
+    var total = matches.length;
+    if (total === 0) return { found: false, total: 0 };
+    var idx2 = ((matchIndex % total) + total) % total;
+    var m = matches[idx2];
+    try {
+        var range = document.createRange();
+        range.setStart(m.node, m.start);
+        range.setEnd(m.node, m.end);
+        var el = m.node.parentElement;
+        if (el && el.scrollIntoView) el.scrollIntoView({ block: 'center', inline: 'nearest' });
+        var rect = range.getBoundingClientRect();
+        return {
+            found: true, total: total, index: idx2,
+            x: rect.left, y: rect.top, w: rect.width, h: rect.height
+        };
+    } catch (e) {
+        return { found: false, total: total };
+    }
+}
+
 // ── link hints (in-page function, injected via page.evaluate) ──────────────
 // Tags every clickable/focusable element currently in the viewport with a
 // temporary data-phasma-hint="hN" attribute (used as a lookup key so a
@@ -638,6 +690,21 @@ function handleRequest(request, response) {
                 }
             });
             ok(response, null);
+        } catch (e) {
+            err(response, e.message);
+        }
+        return;
+    }
+
+    // find_text -----------------------------------------------------------------
+    // Whole-document text search (not just the current viewport) -
+    // scrolls the Nth match into view and returns its rect so the
+    // terminal can highlight it. Vimium-style `/` + n/N.
+    if (action === 'find_text') {
+        try {
+            var found = page.evaluate(_phasmaFindText, params.query || '', params.index || 0);
+            if (!found || typeof found !== 'object') found = { found: false, total: 0 };
+            ok(response, found);
         } catch (e) {
             err(response, e.message);
         }
