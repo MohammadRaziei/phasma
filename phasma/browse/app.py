@@ -9,7 +9,6 @@ text selection + yank.
 from __future__ import annotations
 
 import asyncio
-import json
 import sys
 from typing import Optional, Tuple
 
@@ -283,24 +282,10 @@ class BrowseApp:
 
     async def _fetch_active_field(self) -> Optional[dict]:
         """The rect + current value + placeholder of document.activeElement,
-        if it's an editable field. One RPC instead of a full layout() call."""
-        js = (
-            "(function(){var el=document.activeElement;"
-            "if(!el)return null;"
-            "var t=el.tagName;"
-            "if(t!=='INPUT'&&t!=='TEXTAREA')return null;"
-            "var r=el.getBoundingClientRect();"
-            "return JSON.stringify({value:el.value||'',placeholder:el.placeholder||'',"
-            "x:r.left,y:r.top,w:r.width,h:r.height,isPassword:el.type==='password'});"
-            "})()"
-        )
-        raw = await self.page.evaluate(js)
-        if not raw:
-            return None
-        try:
-            return json.loads(raw)
-        except (TypeError, ValueError):
-            return None
+        if it's an editable field. Uses the dedicated active_field RPC
+        (function-reference based - works even on CSP-strict sites, unlike
+        the generic string-based evaluate())."""
+        return await self.page.active_field()
 
     def _patch_local_field_display(self) -> None:
         """Redraw just the focused field's cells from the local buffer -
@@ -321,19 +306,14 @@ class BrowseApp:
     async def flush_pending_value(self) -> None:
         """Push the locally-buffered value to the real page in one RPC
         (instead of one round-trip per keystroke), firing input/change so
-        page JS (search-as-you-type, validation, ...) still sees it."""
+        page JS (search-as-you-type, validation, ...) still sees it. Uses
+        the dedicated set_active_value RPC - the generic string-based
+        evaluate() calls eval() internally and is silently blocked by any
+        page whose CSP lacks 'unsafe-eval' (most real production sites)."""
         if self.pending_value is None:
             return
-        js = (
-            "(function(v){var el=document.activeElement;"
-            "if(!el)return false;"
-            "el.value=v;"
-            "el.dispatchEvent(new Event('input',{bubbles:true}));"
-            "el.dispatchEvent(new Event('change',{bubbles:true}));"
-            "return true;})(%s)" % json.dumps(self.pending_value)
-        )
         try:
-            await self.page.evaluate(js)
+            await self.page.set_active_value(self.pending_value)
         except Exception:  # noqa: BLE001 - best-effort; a stale/gone element shouldn't crash the app
             pass
 
@@ -378,9 +358,7 @@ class BrowseApp:
     async def exit_insert(self) -> None:
         self.cancel_pending_flush()
         await self.flush_pending_value()
-        await self.page.evaluate(
-            "document.activeElement && document.activeElement.blur && document.activeElement.blur();"
-        )
+        await self.page.blur_active()
         self.mode = "normal"
         self.pending_field = None
         self.pending_value = None

@@ -82,4 +82,3 @@ def image_to_halfblock_grid(image_source: Union[str, bytes], cols: int, rows: in
             row_out.append((fg, bg))
         grid.append(row_out)
     return grid
-

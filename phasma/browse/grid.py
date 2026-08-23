@@ -52,6 +52,7 @@ class TerminalGrid:
     rows: int
     char_w: int
     char_h: int
+    page_bg: Optional[RGB] = None  # the page's own background - fills cells with no bg of their own
     cells: List[List[Cell]] = field(init=False)
 
     def __post_init__(self) -> None:
@@ -64,13 +65,16 @@ class TerminalGrid:
     def place_text_runs(self, texts: List[Dict]) -> None:
         """Place real text characters into cells. Never rasterizes text.
 
-        Tracks the previous run's end column per row: when a run is flagged
-        `gapBefore` (there was real whitespace before it in the source) but
-        its measured x-position would make it visually touch the previous
-        run, one column of separation is enforced. This compensates for a
-        WebKit layout quirk where whitespace sitting exactly at an inline
-        element boundary can collapse to zero width in the actual render,
-        not just in isolated measurement.
+        Tracks the previous run's end column per row and never lets a later
+        run's start column go far enough back to overwrite it - proportional
+        CSS-pixel positions can round to the same terminal column even for
+        two runs that don't actually overlap on screen, and without this a
+        later run would silently clobber the previous run's last character.
+        When a run is flagged `gapBefore` (there was real whitespace before
+        it in the source) an extra blank column is additionally enforced -
+        this compensates for a WebKit layout quirk where whitespace sitting
+        exactly at an inline element boundary can collapse to zero width in
+        the actual render, not just in isolated measurement.
         """
         last_end_col: Dict[int, int] = {}
         for run in texts:
@@ -78,12 +82,9 @@ class TerminalGrid:
             if row < 0 or row >= self.rows:
                 continue
             start_col = int(round(run["x"] / self.char_w))
-            if run.get("gapBefore") and row in last_end_col:
-                # Guarantee at least one blank column of separation, not
-                # merely "no overlap" — proportional-to-monospace rounding
-                # can otherwise snap two adjacent words to touching columns
-                # even though the source had real whitespace between them.
-                start_col = max(start_col, last_end_col[row] + 2)
+            if row in last_end_col:
+                min_col = last_end_col[row] + (2 if run.get("gapBefore") else 1)
+                start_col = max(start_col, min_col)
             fg = parse_css_color(run.get("color"))
             bg = parse_css_color(run.get("bg"))
             bold = bool(run.get("bold"))
@@ -109,7 +110,18 @@ class TerminalGrid:
         """Draw <input>/<textarea> boxes: a background tint across the
         field's rect plus its current value (or a dimmed placeholder when
         empty). Needed because form-control content is native widget state,
-        never a DOM text node — invisible to place_text_runs()."""
+        never a DOM text node — invisible to place_text_runs().
+
+        A real <input> is always a single line of text no matter how tall
+        its CSS padding makes it on screen (modern UIs often give inputs
+        30-40px+ of height) - forcing it to one terminal row instead of
+        blindly dividing its pixel height by char_h avoids an oversized,
+        top-heavy looking box with the value text stuck at the top and
+        blank bar(s) below it. Only <textarea> genuinely spans multiple
+        visual lines and keeps the height-based row count. For a forced
+        single row, the row is centered on the field's real vertical
+        middle rather than pinned to its top, so it lines up with
+        whatever surrounding text sits at the same visual height."""
         PLACEHOLDER_FG = (120, 120, 120)
         DEFAULT_FIELD_BG = (40, 40, 40)
         DEFAULT_FIELD_FG = (230, 230, 230)
@@ -118,11 +130,17 @@ class TerminalGrid:
 
         for f in fields:
             x, y, w, h = f["x"], f["y"], f["w"], f["h"]
-            row0 = int(y // self.char_h)
             col0 = int(x // self.char_w)
             cols = max(1, int(w // self.char_w))
-            rows = max(1, int(h // self.char_h))
             bg = parse_css_color(f.get("bg")) or DEFAULT_FIELD_BG
+
+            is_multiline = f.get("tag") == "TEXTAREA"
+            if is_multiline:
+                row0 = int(y // self.char_h)
+                rows = max(1, int(h // self.char_h))
+            else:
+                row0 = int((y + h / 2) // self.char_h)
+                rows = 1
 
             for r in range(rows):
                 for c in range(cols):
@@ -159,20 +177,24 @@ class TerminalGrid:
 
     def render_ansi(self) -> str:
         """Render the grid as an ANSI truecolor string, one line per row,
-        minimizing escape codes by only emitting SGR on style changes."""
+        minimizing escape codes by only emitting SGR on style changes.
+        Cells with no background of their own fall back to page_bg, so the
+        whole viewport reflects the page's actual background rather than
+        the terminal's own default color."""
         RESET = "\x1b[0m"
         out_lines = []
         for row in self.cells:
             parts: List[str] = []
             last_style = None
             for cell in row:
-                style = (cell.fg, cell.bg, cell.bold, cell.italic, cell.underline)
+                bg = cell.bg or self.page_bg
+                style = (cell.fg, bg, cell.bold, cell.italic, cell.underline)
                 if style != last_style:
                     codes = []
                     if cell.fg:
                         codes.append(f"38;2;{cell.fg[0]};{cell.fg[1]};{cell.fg[2]}")
-                    if cell.bg:
-                        codes.append(f"48;2;{cell.bg[0]};{cell.bg[1]};{cell.bg[2]}")
+                    if bg:
+                        codes.append(f"48;2;{bg[0]};{bg[1]};{bg[2]}")
                     if cell.bold:
                         codes.append("1")
                     if cell.italic:

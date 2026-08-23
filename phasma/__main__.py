@@ -290,7 +290,13 @@ def main() -> None:
 
     # ── browse ────────────────────────────────────────────────────────────────
     elif args.command == "browse":
-        from phasma.browse import main as browse_main  # always importable - see phasma/browse/app.py
+        try:
+            from phasma.browse import main as browse_main
+        except ImportError:
+            _err(
+                "the `browse` extra is required for `phasma browse`.\n"
+                "       install it with: pip install 'phasma[browse]'"
+            )
         char_w = char_h = None
         if args.char_size is not None:
             try:

@@ -84,6 +84,39 @@ function _phasmaComputeLayout(viewportW, viewportH) {
                rect.bottom > 0 && rect.top < viewportH;
     }
 
+    // Effective background of an element: its own, or the nearest ancestor's
+    // if it (and everything below that ancestor) is transparent. This
+    // matters a lot for text contrast - a light-themed content card (e.g.
+    // a README's markdown body) sitting inside an otherwise dark page would
+    // otherwise report "no local background", making dark text on that
+    // light card invisible once it falls back to the dark *page* background
+    // instead. Memoized on the element itself since many words share the
+    // same parent (or nearby ancestors), which matters on pages with
+    // thousands of text runs.
+    function effectiveBg(el) {
+        var chain = [];
+        var cur = el;
+        while (cur) {
+            if (cur.__phasmaEffBg !== undefined) {
+                for (var i = 0; i < chain.length; i++) chain[i].__phasmaEffBg = cur.__phasmaEffBg;
+                return cur.__phasmaEffBg;
+            }
+            chain.push(cur);
+            var c = window.getComputedStyle(cur).backgroundColor;
+            var m = /rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)\s*(?:,\s*([\d.]+)\s*)?\)/.exec(c);
+            if (m) {
+                var a = (m[4] !== undefined) ? parseFloat(m[4]) : 1;
+                if (a > 0) {
+                    for (var j = 0; j < chain.length; j++) chain[j].__phasmaEffBg = c;
+                    return c;
+                }
+            }
+            cur = cur.parentElement;
+        }
+        for (var k = 0; k < chain.length; k++) chain[k].__phasmaEffBg = null;
+        return null;
+    }
+
     var MAX_RUNS = 20000; // safety valve against pathological pages
     var range = document.createRange();
     var walker = document.createTreeWalker(body, NodeFilter.SHOW_TEXT, null, false);
@@ -117,7 +150,7 @@ function _phasmaComputeLayout(viewportW, viewportH) {
 
         var style = window.getComputedStyle(parentEl);
         var color = style.color;
-        var bg = style.backgroundColor;
+        var bg = effectiveBg(parentEl);
         var weight = parseInt(style.fontWeight, 10);
         var bold = style.fontWeight === 'bold' || (!isNaN(weight) && weight >= 600);
         var italic = style.fontStyle === 'italic';
@@ -228,7 +261,8 @@ function _phasmaComputeLayout(viewportW, viewportH) {
             value: isPassword ? new Array(rawValue.length + 1).join('\u2022') : rawValue,
             placeholder: field.placeholder || '',
             x: frect.left, y: frect.top, w: frect.width, h: frect.height,
-            color: fstyle.color, bg: fstyle.backgroundColor, focused: (document.activeElement === field)
+            color: fstyle.color, bg: fstyle.backgroundColor, focused: (document.activeElement === field),
+            tag: field.tagName
         });
     }
 
@@ -241,6 +275,23 @@ function _phasmaComputeLayout(viewportW, viewportH) {
     results.scrollX = window.pageXOffset;
     results.scrollY = window.pageYOffset;
     results.title = document.title;
+
+    // The page's own effective background - reuses the same effectiveBg()
+    // walk as each text run's local background (see above), starting from
+    // <body>. If that walk finds nothing (body and everything above it is
+    // transparent) we fall back to sampling whatever element is actually
+    // rendered at a safe point in the viewport and walking up from there -
+    // some sites set their real background on an inner wrapper div that
+    // isn't a text run's own ancestor at all.
+    results.pageBackground = effectiveBg(body);
+    if (!results.pageBackground) {
+        try {
+            var sample = document.elementFromPoint(
+                Math.min(5, viewportW - 1), Math.min(5, viewportH - 1)
+            );
+            results.pageBackground = sample ? effectiveBg(sample) : null;
+        } catch (e) { /* elementFromPoint can throw in edge cases - ignore */ }
+    }
 
     return results;
 }
@@ -422,6 +473,9 @@ function handleRequest(request, response) {
         try {
             var vp = page.viewportSize;
             var data = page.evaluate(_phasmaComputeLayout, vp.width, vp.height);
+            // Same page.evaluate() null->'' marshalling quirk as active_field
+            // below can affect this nested property too.
+            if (data && data.pageBackground === '') data.pageBackground = null;
             ok(response, data);
         } catch (e) {
             err(response, e.message);
@@ -513,6 +567,77 @@ function handleRequest(request, response) {
                 return { tag: tag, editable: !!editable, type: type };
             });
             ok(response, info);
+        } catch (e) {
+            err(response, e.message);
+        }
+        return;
+    }
+
+    // active_field ------------------------------------------------------------
+    // Rect + current value + placeholder of the focused <input>/<textarea>.
+    // Deliberately implemented via a function reference (like layout/hints),
+    // NOT via the generic string-based `evaluate` action - that one calls
+    // eval() internally and is silently blocked by any page with a
+    // script-src CSP lacking 'unsafe-eval' (i.e. most real production
+    // sites, GitHub and PyPI included). Function-reference page.evaluate()
+    // is a privileged PhantomJS binding, not a page-context eval() call, so
+    // it isn't subject to that restriction.
+    if (action === 'active_field') {
+        try {
+            var field = page.evaluate(function () {
+                var el = document.activeElement;
+                if (!el) return null;
+                var t = el.tagName;
+                if (t !== 'INPUT' && t !== 'TEXTAREA') return null;
+                var r = el.getBoundingClientRect();
+                return {
+                    value: el.value || '', placeholder: el.placeholder || '',
+                    x: r.left, y: r.top, w: r.width, h: r.height,
+                    isPassword: (el.type === 'password')
+                };
+            });
+            // PhantomJS's page.evaluate() marshalling can turn a JS `null`
+            // return value into an empty string when crossing back out of
+            // the page context - normalize defensively so callers reliably
+            // see either a real object or JSON null, never ''.
+            if (!field || typeof field !== 'object') field = null;
+            ok(response, field);
+        } catch (e) {
+            err(response, e.message);
+        }
+        return;
+    }
+
+    // set_active_value ------------------------------------------------------------
+    // Sets the focused element's value in one round trip (used by the
+    // debounced local-echo flush) and fires input/change so page JS
+    // (search-as-you-type, validation, ...) still reacts to it.
+    if (action === 'set_active_value') {
+        try {
+            var applied = page.evaluate(function (v) {
+                var el = document.activeElement;
+                if (!el) return false;
+                el.value = v;
+                el.dispatchEvent(new Event('input', { bubbles: true }));
+                el.dispatchEvent(new Event('change', { bubbles: true }));
+                return true;
+            }, params.value || '');
+            ok(response, applied);
+        } catch (e) {
+            err(response, e.message);
+        }
+        return;
+    }
+
+    // blur_active -----------------------------------------------------------------
+    if (action === 'blur_active') {
+        try {
+            page.evaluate(function () {
+                if (document.activeElement && document.activeElement.blur) {
+                    document.activeElement.blur();
+                }
+            });
+            ok(response, null);
         } catch (e) {
             err(response, e.message);
         }

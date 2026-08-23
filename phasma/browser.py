@@ -238,6 +238,32 @@ class Page:
             lambda: self._driver.active_element(),
         )
 
+    async def active_field(self) -> Optional[Dict]:
+        """Rect + current value + placeholder of the focused <input>/<textarea>,
+        or None. Works via a function-reference RPC action, so unlike the
+        generic string-based evaluate() it isn't blocked by a page's CSP."""
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(
+            None,
+            lambda: self._driver.active_field(),
+        )
+
+    async def set_active_value(self, value: str) -> bool:
+        """Set the focused element's value in one round trip, firing input/change."""
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(
+            None,
+            lambda: self._driver.set_active_value(value),
+        )
+
+    async def blur_active(self) -> None:
+        """Blur document.activeElement, if any."""
+        loop = asyncio.get_event_loop()
+        await loop.run_in_executor(
+            None,
+            lambda: self._driver.blur_active(),
+        )
+
     # link hints -------------------------------------------------------------
 
     async def hints(self) -> list:

@@ -16,7 +16,7 @@ import pytest_asyncio
 
 import phasma
 from phasma.browse.app import BrowseApp, _generate_hint_labels
-from phasma.browse.compose import ImageCache, build_grid
+from phasma.browse.compose import ImageCache, _luminance, build_grid
 from phasma.browse.grid import Cell, TerminalGrid, parse_css_color
 from phasma.browse.raster import image_to_halfblock_grid
 
@@ -82,6 +82,20 @@ def test_place_text_runs_gap_before_forces_separation():
     assert not row_text.startswith("andi"), f"words merged with no gap: {row_text!r}"
 
 
+def test_place_text_runs_never_overwrites_previous_run_without_gap():
+    """Regression: a run with gapBefore=False (correctly - no real
+    whitespace in the source, e.g. 'link' immediately followed by '.')
+    must still never let pixel-to-column rounding collide with and
+    silently overwrite the previous run's last character."""
+    grid = TerminalGrid(cols=50, rows=1, char_w=8, char_h=17)
+    grid.place_text_runs([
+        {"text": "link", "x": 279, "w": 32, "y": 0, "h": 17},
+        {"text": ".", "x": 310, "w": 9, "y": 0, "h": 17, "gapBefore": False},
+    ])
+    row_text = "".join(c.ch for c in grid.cells[0]).strip()
+    assert "link" in row_text, f"a character was silently overwritten: {row_text!r}"
+
+
 def test_place_text_runs_skips_plain_space_without_clobbering():
     grid = TerminalGrid(cols=5, rows=1, char_w=8, char_h=17)
     grid.set(0, 2, Cell("X", (1, 2, 3)))
@@ -121,9 +135,21 @@ def test_place_fields_prefers_value_over_placeholder():
 
 def test_place_fields_multiline_textarea():
     grid = TerminalGrid(cols=20, rows=3, char_w=8, char_h=17)
-    grid.place_fields([{"value": "line1\nline2", "x": 0, "y": 0, "w": 80, "h": 34}])
+    grid.place_fields([{"value": "line1\nline2", "x": 0, "y": 0, "w": 80, "h": 34, "tag": "TEXTAREA"}])
     assert "line1" in "".join(c.ch for c in grid.cells[0])
     assert "line2" in "".join(c.ch for c in grid.cells[1])
+
+
+def test_place_fields_single_line_input_never_spans_multiple_rows():
+    """A tall <input> (common with generous CSS padding) must still occupy
+    exactly one terminal row - dividing its pixel height by char_h would
+    otherwise make it span 2-3 rows with the value stuck at the top and
+    blank bars below, which looks broken."""
+    grid = TerminalGrid(cols=20, rows=5, char_w=8, char_h=17)
+    # a 50px-tall single-line input - would be 2-3 rows if not forced to 1
+    grid.place_fields([{"value": "hi", "x": 0, "y": 0, "w": 100, "h": 50, "tag": "INPUT"}])
+    rows_with_bg = [r for r, row in enumerate(grid.cells) if any(c.bg is not None for c in row)]
+    assert len(rows_with_bg) == 1
 
 
 # ── TerminalGrid.render_ansi ─────────────────────────────────────────────────
@@ -139,6 +165,21 @@ def test_render_ansi_contains_truecolor_codes():
 def test_render_ansi_row_count_matches_rows():
     grid = TerminalGrid(cols=3, rows=4, char_w=8, char_h=17)
     assert grid.render_ansi().count("\n") == 3  # 4 rows -> 3 newlines joining them
+
+
+def test_render_ansi_page_bg_fills_blank_cells():
+    """A blank cell (nothing drawn there) should still carry the page's
+    own background color, not the terminal's default."""
+    grid = TerminalGrid(cols=3, rows=1, char_w=8, char_h=17, page_bg=(30, 30, 46))
+    out = grid.render_ansi()
+    assert "48;2;30;30;46" in out
+
+
+def test_render_ansi_explicit_cell_bg_overrides_page_bg():
+    grid = TerminalGrid(cols=3, rows=1, char_w=8, char_h=17, page_bg=(30, 30, 46))
+    grid.set(0, 0, Cell("x", bg=(255, 0, 0)))
+    out = grid.render_ansi()
+    assert "48;2;255;0;0" in out
 
 
 # ── raster.image_to_halfblock_grid ───────────────────────────────────────────
@@ -277,6 +318,83 @@ async def test_page_mouse_event_click(page):
     assert await page.evaluate("document.title") == "clicked"
 
 
+# ── _luminance / _fix_low_contrast_text ─────────────────────────────────────
+
+def test_luminance_black_is_zero():
+    assert _luminance((0, 0, 0)) == 0
+
+
+def test_luminance_white_is_max():
+    assert _luminance((255, 255, 255)) == 255
+
+
+def test_luminance_orders_by_brightness():
+    assert _luminance((50, 50, 50)) < _luminance((200, 200, 200))
+
+
+@pytest.mark.asyncio
+async def test_fix_low_contrast_text_overrides_black_on_black(page):
+    """Regression: some real sites (PhantomJS's engine doesn't support CSS
+    custom properties, e.g. `color: var(--x)`) resolve to a genuinely wrong
+    computed color - the classic case being black text ending up with no
+    local background, falling back to an equally-black page background.
+    _fix_low_contrast_text must override the foreground to something
+    readable in that case, not just leave it invisible."""
+    await page.set_viewport_size(300, 200)
+    await page.goto(_write_html(
+        "<html><body style='margin:0;background:black;color:black'><p>Hello</p></body></html>"
+    ))
+    cache = ImageCache()
+    grid = await build_grid(page, cols=40, rows=10, char_w=8, char_h=17, image_cache=cache)
+    assert grid.page_bg is not None
+    # find the 'H' of "Hello" and confirm it's no longer black-on-black
+    found = False
+    for row in grid.cells:
+        for cell in row:
+            if cell.ch == "H":
+                found = True
+                effective_bg = cell.bg or grid.page_bg
+                assert abs(_luminance(cell.fg) - _luminance(effective_bg)) >= 40
+    assert found
+
+
+@pytest.mark.asyncio
+async def test_fix_low_contrast_text_leaves_readable_text_alone(page):
+    """Normal, already-readable text (white on black) must not be touched."""
+    await page.set_viewport_size(300, 200)
+    await page.goto(_write_html(
+        "<html><body style='margin:0;background:black;color:white'><p>Hello</p></body></html>"
+    ))
+    cache = ImageCache()
+    grid = await build_grid(page, cols=40, rows=10, char_w=8, char_h=17, image_cache=cache)
+    for row in grid.cells:
+        for cell in row:
+            if cell.ch == "H":
+                assert cell.fg == (255, 255, 255)
+
+
+@pytest.mark.asyncio
+async def test_build_grid_handles_gradient_background(page):
+    """A non-solid page background (gradient, in this case) must not be
+    flattened into one wrong solid color for the whole viewport - blank
+    cells near the top and bottom should end up genuinely different
+    colors, matching what a real gradient actually looks like there."""
+    await page.set_viewport_size(300, 400)
+    await page.goto(_write_html(
+        "<html><body style='margin:0;height:400px;"
+        "background:linear-gradient(red,blue)'></body></html>"
+    ))
+    cache = ImageCache()
+    grid = await build_grid(page, cols=30, rows=20, char_w=8, char_h=17, image_cache=cache)
+    top_bg = grid.cells[0][0].bg
+    bottom_bg = grid.cells[-1][0].bg
+    assert top_bg is not None and bottom_bg is not None
+    assert top_bg != bottom_bg, "gradient collapsed into one flat color"
+    # top should read redder, bottom bluer
+    assert top_bg[0] > bottom_bg[0]
+    assert bottom_bg[2] > top_bg[2]
+
+
 # ── _generate_hint_labels ─────────────────────────────────────────────────────
 
 def test_generate_hint_labels_empty():
@@ -313,6 +431,66 @@ def test_hint_matches_empty_input_matches_everything():
     app.hint_targets = [{"label": "a"}, {"label": "b"}]
     app.hint_input = ""
     assert len(app.hint_matches()) == 2
+
+
+# ── CSP safety: active_field/set_active_value/blur_active must not use eval() ─
+# (the generic string-based evaluate() calls eval() internally and is
+# silently blocked by any page whose CSP lacks 'unsafe-eval' - most real
+# production sites. These three actions must work via function-reference
+# page.evaluate() instead, which isn't subject to that restriction. We can't
+# spin up a page with a real CSP header in these local file:// tests, but we
+# can pin down the calling convention so a future edit can't quietly
+# reintroduce a page.evaluate(<string>) call here.)
+
+def test_active_field_does_not_use_string_evaluate():
+    import inspect
+    from phasma.browse import app as app_module
+    src = inspect.getsource(app_module.BrowseApp._fetch_active_field)
+    assert "self.page.evaluate(" not in src
+
+
+def test_flush_pending_value_does_not_use_string_evaluate():
+    import inspect
+    from phasma.browse import app as app_module
+    src = inspect.getsource(app_module.BrowseApp.flush_pending_value)
+    assert "self.page.evaluate(" not in src
+
+
+def test_exit_insert_does_not_use_string_evaluate():
+    import inspect
+    from phasma.browse import app as app_module
+    src = inspect.getsource(app_module.BrowseApp.exit_insert)
+    assert "self.page.evaluate(" not in src
+
+
+@pytest.mark.asyncio
+async def test_page_send_key_types_and_backspaces(page):
+    await page.set_viewport_size(300, 200)
+    await page.goto(_write_html("<html><body><input id='i'></body></html>"))
+    await page.evaluate("document.getElementById('i').focus()")
+    await page.send_key(text="hi")
+    assert await page.evaluate("document.getElementById('i').value") == "hi"
+    await page.send_key(special="Backspace")
+    assert await page.evaluate("document.getElementById('i').value") == "h"
+
+
+@pytest.mark.asyncio
+async def test_page_active_field_and_set_active_value(page):
+    await page.set_viewport_size(300, 200)
+    await page.goto(_write_html("<html><body><input id='i' placeholder='ph'></body></html>"))
+    assert await page.active_field() is None  # nothing focused yet
+
+    await page.evaluate("document.getElementById('i').focus()")
+    field = await page.active_field()
+    assert field["placeholder"] == "ph"
+    assert field["value"] == ""
+
+    ok = await page.set_active_value("typed value")
+    assert ok is True
+    assert await page.evaluate("document.getElementById('i').value") == "typed value"
+
+    await page.blur_active()
+    assert await page.evaluate("document.activeElement === document.body") is True
 
 
 @pytest.mark.asyncio

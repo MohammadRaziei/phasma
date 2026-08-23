@@ -225,6 +225,22 @@ class DriverPersistent(Driver):
         """Return {tag, editable, type} for document.activeElement, or None."""
         return self._rpc("active_element", timeout=timeout)
 
+    def active_field(self, timeout: float = 10.0) -> Optional[dict]:
+        """Rect + current value + placeholder of the focused <input>/<textarea>,
+        or None. Uses a function-reference RPC action (not the generic
+        string-based `evaluate`, which is blocked by any page whose CSP
+        lacks 'unsafe-eval' - most real sites)."""
+        return self._rpc("active_field", timeout=timeout)
+
+    def set_active_value(self, value: str, timeout: float = 10.0) -> bool:
+        """Set the focused element's value in one round trip and fire
+        input/change so page JS still reacts to it."""
+        return bool(self._rpc("set_active_value", {"value": value}, timeout=timeout))
+
+    def blur_active(self, timeout: float = 10.0) -> None:
+        """Blur document.activeElement, if any."""
+        self._rpc("blur_active", timeout=timeout)
+
     # ── link hints ───────────────────────────────────────────────────────────
 
     def get_hints(self, timeout: float = 30.0) -> list:
