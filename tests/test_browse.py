@@ -552,14 +552,55 @@ async def test_page_active_field_and_set_active_value(page):
 
 
 @pytest.mark.asyncio
-async def test_page_send_key_types_and_backspaces(page):
+async def test_page_send_key_enter_triggers_native_form_submit(page):
+    """Regression: a bare 'keypress' alone doesn't reach a real <form>'s
+    submit-on-Enter behavior on many real sites - Enter needs the full
+    keydown -> keypress -> keyup sequence."""
     await page.set_viewport_size(300, 200)
-    await page.goto(_write_html("<html><body><input id='i'></body></html>"))
+    await page.goto(_write_html(
+        "<html><body><form id='f'><input id='q'></form><div id='marker'></div>"
+        "<script>document.getElementById('f').addEventListener('submit', function(e){"
+        "e.preventDefault();"
+        "document.getElementById('marker').textContent='SUBMITTED:'+document.getElementById('q').value;"
+        "});</script></body></html>"
+    ))
+    await page.evaluate("document.getElementById('q').focus()")
+    await page.send_key(text="hello")
+    await page.send_key(special="Enter")
+    marker = await page.evaluate("document.getElementById('marker').textContent")
+    assert marker == "SUBMITTED:hello"
+
+
+@pytest.mark.asyncio
+async def test_page_send_key_enter_triggers_keydown_listener(page):
+    """Regression: many real sites (React-based forms among them) listen
+    on 'keydown' specifically for Enter, not 'keypress'."""
+    await page.set_viewport_size(300, 200)
+    await page.goto(_write_html(
+        "<html><body><input id='q'><div id='marker'>not yet</div>"
+        "<script>document.getElementById('q').addEventListener('keydown', function(e){"
+        "if (e.key === 'Enter' || e.keyCode === 13) {"
+        "document.getElementById('marker').textContent = 'ENTER_KEYDOWN_FIRED';"
+        "}});</script></body></html>"
+    ))
+    await page.evaluate("document.getElementById('q').focus()")
+    await page.send_key(special="Enter")
+    marker = await page.evaluate("document.getElementById('marker').textContent")
+    assert marker == "ENTER_KEYDOWN_FIRED"
+
+
+@pytest.mark.asyncio
+async def test_page_send_key_backspace_deletes_exactly_one_char(page):
+    """Regression: the Enter fix (sending keydown+keypress+keyup) must not
+    spill over onto other special keys - Backspace deleting via both a
+    keydown default action and a keypress default action would delete two
+    characters instead of one."""
+    await page.set_viewport_size(300, 200)
+    await page.goto(_write_html("<html><body><input id='i' value='abc'></body></html>"))
     await page.evaluate("document.getElementById('i').focus()")
-    await page.send_key(text="hi")
-    assert await page.evaluate("document.getElementById('i').value") == "hi"
+    await page.evaluate("document.getElementById('i').setSelectionRange(3, 3)")
     await page.send_key(special="Backspace")
-    assert await page.evaluate("document.getElementById('i').value") == "h"
+    assert await page.evaluate("document.getElementById('i').value") == "ab"
 
 
 @pytest.mark.asyncio

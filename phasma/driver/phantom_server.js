@@ -596,7 +596,25 @@ function handleRequest(request, response) {
             if (params.special) {
                 var code = page.event.key[params.special];
                 if (code === undefined) { err(response, 'unknown special key: ' + params.special); return; }
-                page.sendEvent('keypress', code);
+                // Enter needs the full keydown -> keypress -> keyup sequence:
+                // React-based forms and most "submit on Enter" handlers
+                // listen on 'keydown', not 'keypress' (deprecated for
+                // non-character keys in some engines and may not even fire
+                // for them at all) - a bare keypress alone silently does
+                // nothing on many real sites. Other special keys
+                // (Backspace, arrows, ...) already have their expected
+                // single-action behavior tied to just 'keypress' here, and
+                // additionally sending 'keydown' for those double-fires
+                // the browser's own default action (e.g. Backspace would
+                // delete two characters instead of one) - so only Enter
+                // gets the extra events.
+                if (params.special === 'Enter') {
+                    page.sendEvent('keydown', code);
+                    page.sendEvent('keypress', code);
+                    page.sendEvent('keyup', code);
+                } else {
+                    page.sendEvent('keypress', code);
+                }
             } else {
                 page.sendEvent('keypress', params.text || '');
             }

@@ -119,13 +119,20 @@ can fix:
   unreadable text (see `compose.py`'s contrast fix) — but the *exact*
   color a real browser would show may still differ from what
   PhantomJS reports.
-- **Modern JS-heavy single-page apps may render blank.** Sites built with
-  a framework that uses newer JS syntax than this engine parses (seen on
-  crates.io, for example) can fail to boot their UI, leaving just the
-  empty HTML shell.
-- **Bot-detection challenge pages** (Cloudflare's "Just a moment..." and
-  similar) will often block PhantomJS outright, the same way they block
-  most non-mainstream browsers.
+- **Modern JS-heavy single-page apps may render blank, or may render but
+  not respond to input.** Sites built with a framework that uses newer JS
+  syntax than this engine parses can fail to boot their whole UI (seen on
+  crates.io — empty shell) or boot partially: static markup and styling
+  render fine, but a specific interactive feature that depends on its own
+  JS module - GitHub's search-box Enter handling is one observed example -
+  quietly does nothing, with no visible error. `phasma browse` still
+  dispatches a real, complete keyboard event (see the Enter fix below) - a
+  page that doesn't react to it has failed to run its own handling code,
+  not failed to receive the keystroke.
+- **Bot-detection challenge pages** (Cloudflare's "Just a moment...",
+  Fastly's bot mitigation - seen blocking PyPI's `/search/` specifically,
+  though not the rest of PyPI - and similar) will often block PhantomJS
+  outright, the same way they block most non-mainstream browsers.
 - Horizontal text reflow, CSS Grid, and other newer layout features may
   not compute exactly the way a current browser would.
 
